@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, User, AlertCircle } from "lucide-react";
-import logoPath from "@assets/Untitled_design__2_-removebg-preview_1771451196860.png";
+
+const logoPath = "/fabrevol-logo.png";
 
 interface LoginProps {
   onLogin: () => void;

@@ -4,7 +4,7 @@ import {
   Linkedin, Zap, BarChart3, LogOut, Package 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logoPath from "@assets/Untitled_design__2_-removebg-preview_1771451196860.png";
+const logoPath = "/fabrevol-logo.png";
 
 export function Sidebar() {
   const [location] = useLocation();
