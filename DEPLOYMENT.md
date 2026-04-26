@@ -1,161 +1,143 @@
-# Fabrevol Sales Centre — Deployment Guide
+# Fabrevol Sales Centre — Railway Deployment Guide
 
-This guide walks you through deploying the app on Railway and making it accessible at `fabrevol.com`.
-
----
-
-## Step 1: Push Code to GitHub
-
-1. In Replit, click the **Version Control** icon (branch icon) in the left sidebar
-2. Click **Connect to GitHub**
-3. Sign in to your GitHub account if prompted
-4. Click **Create GitHub repository** → name it `fabrevol-salescentre` (private)
-5. Click **Push to GitHub**
-
-Your code is now on GitHub. Every time you make changes in Replit and push, Railway will auto-redeploy.
+**Code is already on GitHub:** https://github.com/Maverick-7049/fabrevol-salescentre  
+**Target URL:** https://salescentre.fabrevol.com  
+**Login:** `Fabrevol@sales` / `Raj@2801`
 
 ---
 
-## Step 2: Create Railway Account & Project
+## STEP 1 — Railway is Already Deploying
 
-1. Go to **railway.app** and sign up (free to start)
-2. Click **New Project** → **Deploy from GitHub repo**
-3. Connect your GitHub account → select `fabrevol-salescentre`
-4. Railway will detect the project and start building
+Your GitHub repo is already connected to Railway. The latest commit fixes the logo import that was causing build failures. Railway should be auto-deploying right now.
 
----
-
-## Step 3: Add PostgreSQL Database on Railway
-
-1. In your Railway project, click **+ New Service** → **Database** → **PostgreSQL**
-2. Click on the database → **Variables** tab → copy the `DATABASE_URL`
-3. Keep this tab open — you'll need it in Step 4
+- Watch the Railway dashboard for a green checkmark
+- If it's still showing "Failed", click the **⋮ menu** on the deployment → **Redeploy**
+- The build takes about 2 minutes
 
 ---
 
-## Step 4: Import Your Data
+## STEP 2 — Add PostgreSQL Database
 
-Once Railway PostgreSQL is running:
+If you haven't done this yet:
 
-1. Go to the database service → **Query** tab (or use any Postgres client like TablePlus/DBeaver)
-2. Connect using the credentials from the Variables tab
-3. Run the migration file: `migration/fabrevol_data_export.sql`
-   - This creates all tables and imports your 175 leads, 3 suppliers, and 8 products
-
-**Using psql command line:**
-```bash
-psql "your-railway-database-url" -f migration/fabrevol_data_export.sql
-```
-
-**Using TablePlus/DBeaver:**
-- Connect with the Railway DATABASE_URL
-- Open & execute `migration/fabrevol_data_export.sql`
+1. In your Railway project canvas, click **"+ New"**
+2. Choose **"Database"** → **"Add PostgreSQL"**
+3. Railway creates it and **automatically sets `DATABASE_URL`** in your app — no manual copy needed
 
 ---
 
-## Step 5: Set Environment Variables on Railway
+## STEP 3 — Set Environment Variables
 
-In your Railway app service → **Variables** tab, add:
+Click on the **fabrevol-salescentre service** (not the database) → **"Variables"** tab → add these:
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | (copied from Railway Postgres in Step 3) |
 | `AUTH_USERNAME` | `Fabrevol@sales` |
-| `AUTH_PASSWORD` | `Raj@2801` (or change this) |
-| `SESSION_SECRET` | (generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
-| `OPENAI_API_KEY` | Your OpenAI API key from platform.openai.com |
+| `AUTH_PASSWORD` | `Raj@2801` |
+| `SESSION_SECRET` | `FabrevolSalesSecretKey2026!XZY99` (or any random 32+ char string) |
+| `OPENAI_API_KEY` | Your key from platform.openai.com (needed for AI Discover) |
 | `NODE_ENV` | `production` |
-| `PORT` | `5000` |
 
-After adding variables, Railway will redeploy automatically.
+> **Do NOT set `DATABASE_URL` or `PORT` manually** — Railway sets both automatically.
 
----
-
-## Step 6: Test the Railway Deployment
-
-Railway gives you a URL like `fabrevol-salescentre.up.railway.app`. 
-Visit it, log in with `Fabrevol@sales` / your password, and confirm everything works.
+After adding variables, Railway redeploys automatically. Wait for green.
 
 ---
 
-## Step 7: Connect to fabrevol.com
+## STEP 4 — Import Your Data
 
-You have two options:
+The app auto-seeds 140 demo leads on first start. To load your actual 175 leads + 3 suppliers + 8 products, run the SQL migration.
 
-### Option A — Subdomain: `salescentre.fabrevol.com` ✅ Recommended (simpler)
+### Option A — Railway Query Tab (no extra tools needed)
+1. Click the **PostgreSQL** service in Railway
+2. Click **"Data"** tab → **"Query"**
+3. Open the file `migration/fabrevol_data_export.sql` from your GitHub repo
+4. Copy all contents → paste into the query box → click Run
 
-This is much simpler. Instead of `/salescentre` path, the app lives at its own subdomain.
+### Option B — TablePlus or DBeaver (GUI)
+1. Click PostgreSQL service → **"Connect"** → copy the **Public URL**  
+   (looks like `postgresql://postgres:xxx@monorail.proxy.rlwy.net:12345/railway`)
+2. Open TablePlus/DBeaver → New Connection → paste URL
+3. Open a query window → paste contents of `migration/fabrevol_data_export.sql` → Run
 
-In your DNS settings (wherever fabrevol.com is hosted):
-1. Add a **CNAME record**:
-   - Name: `salescentre`
-   - Value: your Railway app domain (e.g. `fabrevol-salescentre.up.railway.app`)
-   - TTL: 300
-
-2. In Railway → your app service → **Settings** → **Custom Domain**
-   - Add `salescentre.fabrevol.com`
-   - Railway gives you a verification record — add it to DNS
-
-3. Done! The app will be live at `https://salescentre.fabrevol.com`
-
----
-
-### Option B — Path: `www.fabrevol.com/salescentre` (requires Cloudflare)
-
-This only works if `fabrevol.com` is behind Cloudflare (check at cloudflare.com).
-
-**In Cloudflare → Workers & Pages → Create Worker:**
-
-```javascript
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    if (url.pathname.startsWith('/salescentre')) {
-      const newPath = url.pathname.replace('/salescentre', '') || '/';
-      const newUrl = `https://fabrevol-salescentre.up.railway.app${newPath}${url.search}`;
-      return fetch(newUrl, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-      });
-    }
-    return fetch(request); // pass through other requests to main site
-  }
-}
+### Option C — psql command line
+```bash
+psql "postgresql://postgres:xxx@monorail.proxy.rlwy.net:12345/railway" -f migration/fabrevol_data_export.sql
 ```
 
-**Add a Cloudflare Route:**
-- Pattern: `www.fabrevol.com/salescentre*`
-- Worker: the one you just created
-
-> Note: This approach routes traffic through Cloudflare Workers, which has a free tier of 100,000 requests/day.
+> The SQL file uses `INSERT ... ON CONFLICT DO NOTHING` — safe to run multiple times.
 
 ---
 
-## Step 8: Making Code Changes
+## STEP 5 — Test Your Railway URL
 
-Your workflow going forward:
-1. Make changes in **Replit** using this chat
-2. Click **Push to GitHub** in Replit's Version Control panel
-3. Railway **auto-deploys** within ~2 minutes
-4. Changes are live at your domain
+1. In Railway, click your service → **"Settings"** → **"Networking"**
+2. Click **"Generate Domain"** if you don't have one yet
+3. Visit the URL (e.g. `fabrevol-salescentre.up.railway.app`)
+4. You should see the Fabrevol login page
+5. Log in: `Fabrevol@sales` / `Raj@2801`
+6. Check that leads, CRM, and Suppliers all load
+
+---
+
+## STEP 6 — Connect salescentre.fabrevol.com
+
+### In Railway:
+1. Service → **"Settings"** → **"Networking"** → **"+ Custom Domain"**
+2. Enter: `salescentre.fabrevol.com`
+3. Railway shows you a **CNAME target** (copy this value)
+
+### In Hostinger:
+1. Login → **Domains** → **fabrevol.com** → **DNS / Zone Editor**
+2. Click **"Add Record"** and fill in:
+   - **Type:** `CNAME`
+   - **Name / Host:** `salescentre`
+   - **Value / Points to:** *(paste the CNAME target from Railway above)*
+   - **TTL:** `3600`
+3. Save
+
+Wait **5–30 minutes** for DNS to propagate worldwide.  
+Then visit **https://salescentre.fabrevol.com** — SSL certificate is automatic.
+
+---
+
+## Making Future Code Changes
+
+If you return to Replit to make changes:
+1. Make changes in Replit
+2. In the Replit Shell, run:
+   ```bash
+   git add -A && git commit -m "your change description" && git push
+   ```
+3. Railway **auto-deploys** within 2 minutes
+4. Changes go live at salescentre.fabrevol.com
 
 ---
 
 ## Troubleshooting
 
-**Login not working after deploy?**
-- Check `SESSION_SECRET` is set in Railway variables
-- Check `NODE_ENV=production` is set
-- Clear browser cookies and try again
+**Build fails** → Check Railway build logs for the specific error line
 
-**AI Discover not working?**
-- Check `OPENAI_API_KEY` is set in Railway variables
-- Verify the key is valid at platform.openai.com
+**App crashes on start** → Check deploy logs; usually `DATABASE_URL` not connected (add PostgreSQL plugin)
 
-**Database connection errors?**
-- Confirm `DATABASE_URL` in Railway variables matches the PostgreSQL service
-- Check the PostgreSQL service is running (green dot in Railway)
+**Login not working** → Check `AUTH_USERNAME`, `AUTH_PASSWORD`, `SESSION_SECRET` are all set in Variables tab
 
-**No data showing after deploy?**
-- Run the `migration/fabrevol_data_export.sql` file against the Railway database (Step 4)
+**Blank page / no data** → Run the SQL migration from Step 4
+
+**AI Discover does nothing** → Set `OPENAI_API_KEY` in Variables tab; get key from platform.openai.com
+
+**Domain not loading** → DNS takes up to 30 min; verify CNAME record in Hostinger is saved correctly
+
+---
+
+## Key Files in This Repo
+
+| File | Purpose |
+|---|---|
+| `railway.toml` | Railway build + start commands |
+| `nixpacks.toml` | Node 20 build environment |
+| `migration/fabrevol_data_export.sql` | All your data (175 leads, 3 suppliers, 8 products) |
+| `server/index.ts` | Express server entry point |
+| `server/routes.ts` | All API routes |
+| `shared/schema.ts` | Database schema (Drizzle ORM) |
+| `client/src/pages/` | React pages: Login, Finder, Targets, CRM, Suppliers, Roadmap |
