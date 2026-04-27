@@ -630,5 +630,55 @@ Return ONLY the JSON object, no markdown or explanation.`;
     res.status(204).end();
   });
 
+  // TEMPORARY: data export — visit while logged in on Replit, then remove
+  app.get("/api/export", requireAuth, async (_req, res) => {
+    const [allLeads, allProducts, allSuppliers] = await Promise.all([
+      storage.getAllLeadsIncludingDeleted(),
+      storage.getProducts(),
+      storage.getSuppliers(),
+    ]);
+    res.json({ leads: allLeads, products: allProducts, suppliers: allSuppliers });
+  });
+
+  // TEMPORARY: data import — POST the exported JSON here after Vercel deploy, then remove
+  app.post("/api/import", requireAuth, async (req, res) => {
+    const { leads: inLeads = [], products: inProducts = [], suppliers: inSuppliers = [] } = req.body;
+
+    const [existingLeads, existingProducts, existingSuppliers] = await Promise.all([
+      storage.getAllLeadsIncludingDeleted(),
+      storage.getProducts(),
+      storage.getSuppliers(),
+    ]);
+
+    const existingCompanies = new Set(existingLeads.map((l: any) => l.company.toLowerCase().trim()));
+    const existingProductNames = new Set(existingProducts.map((p: any) => p.name.toLowerCase().trim()));
+    const existingSupplierNames = new Set(existingSuppliers.map((s: any) => s.name.toLowerCase().trim()));
+
+    let leadsImported = 0, productsImported = 0, suppliersImported = 0;
+
+    for (const lead of inLeads) {
+      if (existingCompanies.has((lead.company || "").toLowerCase().trim())) continue;
+      const { id, createdAt, ...rest } = lead;
+      await storage.createLead(rest);
+      leadsImported++;
+    }
+
+    for (const product of inProducts) {
+      if (existingProductNames.has((product.name || "").toLowerCase().trim())) continue;
+      const { id, createdAt, ...rest } = product;
+      await storage.createProduct(rest);
+      productsImported++;
+    }
+
+    for (const supplier of inSuppliers) {
+      if (existingSupplierNames.has((supplier.name || "").toLowerCase().trim())) continue;
+      const { id, createdAt, ...rest } = supplier;
+      await storage.createSupplier(rest);
+      suppliersImported++;
+    }
+
+    res.json({ leadsImported, productsImported, suppliersImported });
+  });
+
   return httpServer;
 }
