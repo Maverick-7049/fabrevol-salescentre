@@ -7,7 +7,7 @@ import { leads, insertSupplierSchema } from "@shared/schema";
 import { seedLeads } from "./seed-data";
 import OpenAI from "openai";
 import multer from "multer";
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -446,9 +446,8 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      const parser = new PDFParse({ verbosity: 0 });
-      await parser.load(req.file.buffer);
-      const pdfText = (await parser.getText()).substring(0, 4000);
+      const parsed = await pdfParse(req.file.buffer);
+      const pdfText = parsed.text.substring(0, 4000);
 
       const prompt = `You are a specialty chemicals sales intelligence tool for Fabrevol, an Indian chemicals supplier.
 
