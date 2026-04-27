@@ -446,8 +446,8 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      const parsed = await pdfParse(req.file.buffer);
-      const pdfText = parsed.text.substring(0, 4000);
+      const pdfData = await pdfParse(req.file.buffer);
+      const pdfText = pdfData.text.substring(0, 4000);
 
       const prompt = `You are a specialty chemicals sales intelligence tool for Fabrevol, an Indian chemicals supplier.
 
