@@ -339,11 +339,11 @@ Return a JSON object with a "companies" key containing the array of company obje
 
   app.post("/api/leads/generate", async (req, res) => {
     try {
-      const parsed = generateInputSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid input" });
+      const genInput = generateInputSchema.safeParse(req.body);
+      if (!genInput.success) {
+        return res.status(400).json({ message: genInput.error.errors[0]?.message || "Invalid input" });
       }
-      const { industry, region, count, product, industries } = parsed.data;
+      const { industry, region, count, product, industries } = genInput.data;
 
       const existingLeads = await storage.getAllLeadsIncludingDeleted();
 
@@ -421,14 +421,14 @@ Return ONLY the JSON object, no markdown or explanation.`;
       });
 
       const content = response.choices[0]?.message?.content || "{}";
-      const parsed = JSON.parse(content);
+      const aiResult = JSON.parse(content);
 
       const product = await storage.createProduct({
-        name: parsed.name || name.trim(),
-        description: parsed.description || null,
-        applications: parsed.applications || null,
-        targetIndustries: parsed.targetIndustries || [],
-        keywords: parsed.keywords || [],
+        name: aiResult.name || name.trim(),
+        description: aiResult.description || null,
+        applications: aiResult.applications || null,
+        targetIndustries: aiResult.targetIndustries || [],
+        keywords: aiResult.keywords || [],
         source: "text",
         pdfName: null,
       });
@@ -478,14 +478,14 @@ Return ONLY the JSON object, no markdown or explanation.`;
       });
 
       const content = response.choices[0]?.message?.content || "{}";
-      const parsed = JSON.parse(content);
+      const pdfAiResult = JSON.parse(content);
 
       const product = await storage.createProduct({
-        name: parsed.name || req.file.originalname || "Unknown Product",
-        description: parsed.description || null,
-        applications: parsed.applications || null,
-        targetIndustries: parsed.targetIndustries || [],
-        keywords: parsed.keywords || [],
+        name: pdfAiResult.name || req.file.originalname || "Unknown Product",
+        description: pdfAiResult.description || null,
+        applications: pdfAiResult.applications || null,
+        targetIndustries: pdfAiResult.targetIndustries || [],
+        keywords: pdfAiResult.keywords || [],
         source: "pdf",
         pdfName: req.file.originalname || null,
       });
