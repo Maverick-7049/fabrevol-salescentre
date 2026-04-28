@@ -421,18 +421,24 @@ Return a JSON object with:
 
 Return ONLY the JSON object, no markdown or explanation.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      });
+      let aiResponse;
+      try {
+        aiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000,
+          response_format: { type: "json_object" },
+        });
+      } catch (aiErr: any) {
+        console.error("OpenAI error (analyze-text):", aiErr?.message);
+        return res.status(500).json({ message: `OpenAI error: ${aiErr?.message || "Unknown error"}` });
+      }
 
-      const content = response.choices[0]?.message?.content || "{}";
+      const content = aiResponse.choices[0]?.message?.content || "{}";
       const aiResult = JSON.parse(content);
 
       const product = await storage.createProduct({
@@ -446,9 +452,9 @@ Return ONLY the JSON object, no markdown or explanation.`;
       });
 
       res.status(201).json(product);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error analyzing product:", err);
-      res.status(500).json({ message: "Failed to analyze product. Please try again." });
+      res.status(500).json({ message: `Failed to analyze product: ${err?.message || err}` });
     }
   });
 
@@ -458,10 +464,31 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
+      // Mock browser-only APIs that pdfjs-dist requires in Node.js
+      if (typeof (global as any).DOMMatrix === "undefined") {
+        (global as any).DOMMatrix = class DOMMatrix {
+          static fromMatrix() { return new (global as any).DOMMatrix(); }
+        };
+      }
+      if (typeof (global as any).ImageData === "undefined") {
+        (global as any).ImageData = class ImageData {
+          constructor(public width: number, public height: number) {}
+        };
+      }
+      if (typeof (global as any).Path2D === "undefined") {
+        (global as any).Path2D = class Path2D {};
+      }
+
       const { createRequire } = await import("module");
       const require = createRequire(import.meta.url);
       const pdfParse = require("pdf-parse");
-      const pdfData = await pdfParse(req.file.buffer);
+      let pdfData: any;
+      try {
+        pdfData = await pdfParse(req.file.buffer);
+      } catch (pdfErr: any) {
+        console.error("PDF parse error:", pdfErr?.message);
+        return res.status(500).json({ message: `Failed to read PDF: ${pdfErr?.message || "Unknown error"}` });
+      }
       const pdfText = pdfData.text.substring(0, 4000);
 
       const prompt = `You are a specialty chemicals sales intelligence tool for Fabrevol, an Indian chemicals supplier.
@@ -481,34 +508,40 @@ Return a JSON object with:
 
 Return ONLY the JSON object, no markdown or explanation.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      });
+      let pdfAiResponse;
+      try {
+        pdfAiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000,
+          response_format: { type: "json_object" },
+        });
+      } catch (aiErr: any) {
+        console.error("OpenAI error (analyze-pdf):", aiErr?.message);
+        return res.status(500).json({ message: `OpenAI error: ${aiErr?.message || "Unknown error"}` });
+      }
 
-      const content = response.choices[0]?.message?.content || "{}";
+      const content = pdfAiResponse.choices[0]?.message?.content || "{}";
       const pdfAiResult = JSON.parse(content);
 
       const product = await storage.createProduct({
-        name: pdfAiResult.name || req.file.originalname || "Unknown Product",
+        name: pdfAiResult.name || req.file!.originalname || "Unknown Product",
         description: pdfAiResult.description || null,
         applications: pdfAiResult.applications || null,
         targetIndustries: pdfAiResult.targetIndustries || [],
         keywords: pdfAiResult.keywords || [],
         source: "pdf",
-        pdfName: req.file.originalname || null,
+        pdfName: req.file!.originalname || null,
       });
 
       res.status(201).json(product);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error analyzing PDF:", err);
-      res.status(500).json({ message: "Failed to analyze PDF. Please try again." });
+      res.status(500).json({ message: `Failed to analyze PDF: ${err?.message || err}` });
     }
   });
 
