@@ -68,6 +68,10 @@ async function buildAll() {
     format: "esm",
     outfile: "api/index.js",
     external: allDeps,
+    // Force pdf-parse to its CJS build — the ESM build has no default export
+    alias: {
+      "pdf-parse": "./node_modules/pdf-parse/dist/pdf-parse/cjs/index.cjs",
+    },
     logLevel: "info",
   });
 }
