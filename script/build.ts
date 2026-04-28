@@ -61,13 +61,17 @@ async function buildAll() {
   });
 
   console.log("building api function...");
+  // pdf-parse must be bundled (not external) so it's available in the
+  // Vercel serverless function — it's lazy-loaded so the DOMMatrix mock
+  // in routes.ts runs first, avoiding the browser-API crash.
+  const apiExternals = allDeps.filter((dep) => dep !== "pdf-parse");
   await esbuild({
     entryPoints: ["server/vercel.ts"],
     platform: "node",
     bundle: true,
     format: "esm",
     outfile: "api/index.js",
-    external: allDeps,
+    external: apiExternals,
     logLevel: "info",
   });
 }

@@ -479,9 +479,8 @@ Return ONLY the JSON object, no markdown or explanation.`;
         (global as any).Path2D = class Path2D {};
       }
 
-      const { createRequire } = await import("module");
-      const require = createRequire(import.meta.url);
-      const pdfParse = require("pdf-parse");
+      const pdfParseModule = await import("pdf-parse");
+      const pdfParse = pdfParseModule.default ?? pdfParseModule;
       let pdfData: any;
       try {
         pdfData = await pdfParse(req.file.buffer);
