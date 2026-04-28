@@ -264,16 +264,22 @@ For each company, return a JSON array with objects containing:
 
 Return a JSON object with a "companies" key containing the array of company objects. Example: {"companies": [...]}`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        { role: "system", content: "You are a B2B sales intelligence tool. Always respond with a valid JSON array of company objects. No markdown, no explanation." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 6000,
-      response_format: { type: "json_object" },
-    });
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are a B2B sales intelligence tool. Always respond with a valid JSON array of company objects. No markdown, no explanation." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 6000,
+        response_format: { type: "json_object" },
+      });
+    } catch (aiErr: any) {
+      console.error("OpenAI API error:", aiErr?.message || aiErr);
+      throw new Error(`OpenAI error: ${aiErr?.message || "Unknown AI error"}`);
+    }
 
     const content = response.choices[0]?.message?.content || "{}";
     let rawParsed;
@@ -337,6 +343,12 @@ Return a JSON object with a "companies" key containing the array of company obje
   }
 
   app.post("/api/leads/generate", async (req, res) => {
+    // Fail fast with a clear message if the key is not configured
+    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      return res.status(500).json({ message: "OpenAI API key is not configured. Please set OPENAI_API_KEY in Vercel environment variables." });
+    }
+
     try {
       const genInput = generateInputSchema.safeParse(req.body);
       if (!genInput.success) {
@@ -369,9 +381,10 @@ Return a JSON object with a "companies" key containing the array of company obje
       }
 
       res.status(201).json(savedLeads);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error generating leads:", err);
-      res.status(500).json({ message: "Failed to generate leads. Please try again." });
+      const detail = err?.message || String(err);
+      res.status(500).json({ message: `Failed to generate leads: ${detail}` });
     }
   });
 
