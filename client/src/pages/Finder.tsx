@@ -195,15 +195,6 @@ export default function Finder() {
     });
   };
 
-  const handleDeleteProduct = (id: number) => {
-    deleteProduct.mutate(id, {
-      onSuccess: () => {
-        if (selectedProduct === `custom_${id}`) setSelectedProduct("all");
-        toast({ title: "Product Removed", description: "Product removed from your list." });
-      },
-    });
-  };
-
   const INDUSTRY_NAME_TO_ID: Record<string, string> = {
     "Rubber & Latex": "rubber_latex",
     "Personal Care & Cosmetics": "pcd_personal_care",
