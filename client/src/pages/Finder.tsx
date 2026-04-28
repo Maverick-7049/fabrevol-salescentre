@@ -562,56 +562,59 @@ export default function Finder() {
                       </div>
                     </div>
 
-                    {(customProducts || []).length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-slate-700">Your Custom Products</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {(customProducts || []).map((product: Product) => (
-                            <div
-                              key={product.id}
-                              className="bg-slate-50 rounded-xl p-3 border border-slate-200 group hover:border-[#0ea5e9]/30 transition-colors"
-                              data-testid={`card-product-${product.id}`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <h5 className="font-semibold text-[#153e4d] text-sm truncate">{product.name}</h5>
-                                  {product.description && (
-                                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">{product.description}</p>
-                                  )}
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    {(product.targetIndustries || []).slice(0, 3).map((ind: string) => (
-                                      <Badge key={ind} variant="secondary" className="no-default-active-elevate text-[10px] py-0 px-1.5">{ind}</Badge>
-                                    ))}
-                                    {(product.targetIndustries || []).length > 3 && (
-                                      <Badge variant="secondary" className="no-default-active-elevate text-[10px] py-0 px-1.5">+{(product.targetIndustries || []).length - 3}</Badge>
-                                    )}
-                                  </div>
-                                  {product.source === "pdf" && product.pdfName && (
-                                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                                      <FileText className="w-3 h-3" /> {product.pdfName}
-                                    </p>
-                                  )}
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteProduct(product.id)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 text-slate-400 hover:text-red-500"
-                                  data-testid={`button-delete-product-${product.id}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
+
+          {/* Custom Products List */}
+          {(customProducts || []).length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-5">
+              <h4 className="text-sm font-semibold text-[#153e4d] mb-3">Your Custom Products</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(customProducts || []).map((product: Product) => (
+                  <div
+                    key={product.id}
+                    className="bg-slate-50 rounded-xl p-3 border border-slate-200 hover:border-[#0ea5e9]/30 transition-colors"
+                    data-testid={`card-product-${product.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h5 className="font-semibold text-[#153e4d] text-sm truncate">{product.name}</h5>
+                        {product.description && (
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{product.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(product.targetIndustries || []).slice(0, 3).map((ind: string) => (
+                            <Badge key={ind} variant="secondary" className="no-default-active-elevate text-[10px] py-0 px-1.5">{ind}</Badge>
+                          ))}
+                          {(product.targetIndustries || []).length > 3 && (
+                            <Badge variant="secondary" className="no-default-active-elevate text-[10px] py-0 px-1.5">+{(product.targetIndustries || []).length - 3}</Badge>
+                          )}
+                        </div>
+                        {product.source === "pdf" && product.pdfName && (
+                          <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                            <FileText className="w-3 h-3" /> {product.pdfName}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteProduct(product.id)}
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0"
+                        data-testid={`button-delete-product-${product.id}`}
+                        title="Delete product"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Results Area */}
           <div className="min-h-[400px]">
