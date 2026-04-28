@@ -161,6 +161,18 @@ export default function Finder() {
     });
   };
 
+  const handleDeleteProduct = (id: number) => {
+    deleteProduct.mutate(id, {
+      onSuccess: () => {
+        if (selectedProduct === `custom_${id}`) setSelectedProduct("all");
+        toast({ title: "Product Removed", description: "Product removed from your list." });
+      },
+      onError: () => {
+        toast({ title: "Failed", description: "Could not delete product.", variant: "destructive" });
+      },
+    });
+  };
+
   const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
