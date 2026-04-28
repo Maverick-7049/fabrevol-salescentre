@@ -464,14 +464,9 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      // esbuild may single- or double-wrap CJS default exports
-      const pdfParseModule: any = await import("pdf-parse");
-      let pdfParse: any = pdfParseModule;
-      if (typeof pdfParse !== "function") pdfParse = pdfParse.default;
-      if (typeof pdfParse !== "function") pdfParse = pdfParse.default;
-      if (typeof pdfParse !== "function") {
-        return res.status(500).json({ message: "PDF parser failed to load. Please try again." });
-      }
+      const { createRequire } = await import("module");
+      const require = createRequire(import.meta.url);
+      const pdfParse = require("pdf-parse");
       let pdfData: any;
       try {
         pdfData = await pdfParse(req.file.buffer);

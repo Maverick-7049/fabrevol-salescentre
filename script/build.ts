@@ -61,30 +61,13 @@ async function buildAll() {
   });
 
   console.log("building api function...");
-  // pdf-parse (and its dep pdfjs-dist) accesses browser-only globals like
-  // DOMMatrix at MODULE INIT TIME — before any handler code runs.
-  // The banner runs first in the output file, so the mocks are in place
-  // before pdfjs-dist initialises, preventing the ReferenceError crash.
-  const domMocksBanner = `
-if (typeof globalThis.DOMMatrix === 'undefined') {
-  globalThis.DOMMatrix = class DOMMatrix { static fromMatrix() { return new globalThis.DOMMatrix(); } };
-}
-if (typeof globalThis.ImageData === 'undefined') {
-  globalThis.ImageData = class ImageData { constructor(w,h){this.width=w;this.height=h;} };
-}
-if (typeof globalThis.Path2D === 'undefined') {
-  globalThis.Path2D = class Path2D {};
-}
-`;
-  const apiExternals = allDeps.filter((dep) => dep !== "pdf-parse");
   await esbuild({
     entryPoints: ["server/vercel.ts"],
     platform: "node",
     bundle: true,
     format: "esm",
     outfile: "api/index.js",
-    external: apiExternals,
-    banner: { js: domMocksBanner },
+    external: allDeps,
     logLevel: "info",
   });
 }
