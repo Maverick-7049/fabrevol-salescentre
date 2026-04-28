@@ -1,4 +1,4 @@
-import { app, initApp } from "../dist/app.js";
+import { app, initApp } from "../server/app";
 
 // Initialize routes once at module load; all requests await this promise.
 const initPromise = initApp();

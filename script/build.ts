@@ -60,13 +60,13 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("building api server bundle...");
+  console.log("building api function...");
   await esbuild({
-    entryPoints: ["server/app.ts"],
+    entryPoints: ["api/index.ts"],
     platform: "node",
     bundle: true,
     format: "esm",
-    outfile: "dist/app.js",
+    outfile: "api/index.js",
     external: allDeps,
     logLevel: "info",
   });
