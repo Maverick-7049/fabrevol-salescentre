@@ -7,6 +7,7 @@ import { leads, insertSupplierSchema } from "@shared/schema";
 import { seedLeads } from "./seed-data";
 import OpenAI from "openai";
 import multer from "multer";
+import pdfParse from "pdf-parse";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -464,16 +465,6 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      // Lazy-load pdf-parse so a startup crash doesn't kill the whole API
-      const pdfParseModule: any = await import("pdf-parse");
-      const pdfParse: any = typeof pdfParseModule === "function"
-        ? pdfParseModule
-        : typeof pdfParseModule.default === "function"
-          ? pdfParseModule.default
-          : null;
-      if (!pdfParse) {
-        return res.status(500).json({ message: "PDF parser unavailable." });
-      }
       let pdfData: any;
       try {
         pdfData = await pdfParse(req.file.buffer);

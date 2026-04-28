@@ -61,9 +61,9 @@ async function buildAll() {
   });
 
   console.log("building api function...");
-  // pdf-parse v1.1.1 has no DOM dependencies so it is safe to bundle.
-  // It must be bundled (not external) because Vercel's static analyser
-  // cannot trace a runtime createRequire() call and won't include it.
+  // pdf-parse v1.1.1 uses dynamic require('fs') internally. ESM bundles
+  // don't have require, so we inject a shim at the top of the output.
+  // pdf-parse has no DOM deps so it is safe to bundle (not external).
   const apiExternals = allDeps.filter((dep) => dep !== "pdf-parse");
   await esbuild({
     entryPoints: ["server/vercel.ts"],
@@ -72,6 +72,9 @@ async function buildAll() {
     format: "esm",
     outfile: "api/index.js",
     external: apiExternals,
+    banner: {
+      js: `import { createRequire as __cjsRequire } from "module"; const require = __cjsRequire(import.meta.url);`,
+    },
     logLevel: "info",
   });
 }
