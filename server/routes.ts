@@ -7,6 +7,8 @@ import { leads, insertSupplierSchema } from "@shared/schema";
 import { seedLeads } from "./seed-data";
 import OpenAI from "openai";
 import multer from "multer";
+// v1.1.1 — no DOM/canvas deps, safe to import statically
+import pdfParse from "pdf-parse";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -464,8 +466,6 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      const pdfParseModule: any = await import("pdf-parse");
-      const pdfParse = pdfParseModule.default ?? pdfParseModule;
       let pdfData: any;
       try {
         pdfData = await pdfParse(req.file.buffer);
