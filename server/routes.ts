@@ -479,8 +479,11 @@ Return ONLY the JSON object, no markdown or explanation.`;
         (global as any).Path2D = class Path2D {};
       }
 
-      const pdfParseModule = await import("pdf-parse");
-      const pdfParse = pdfParseModule.default ?? pdfParseModule;
+      // esbuild may single- or double-wrap CJS default exports
+      const pdfParseModule: any = await import("pdf-parse");
+      let pdfParse: any = pdfParseModule;
+      if (typeof pdfParse !== "function") pdfParse = pdfParse.default;
+      if (typeof pdfParse !== "function") pdfParse = pdfParse.default;
       let pdfData: any;
       try {
         pdfData = await pdfParse(req.file.buffer);
