@@ -59,8 +59,10 @@ async function main() {
       skipped = 0;
 
     for (const stmt of insertStatements) {
+      // Fix untyped empty arrays: ARRAY[] → ARRAY[]::text[]
+      const fixed = stmt.replace(/ARRAY\[\]/g, "ARRAY[]::text[]");
       // Append ON CONFLICT so re-running is safe
-      const safe = stmt + " ON CONFLICT (id) DO NOTHING";
+      const safe = fixed + " ON CONFLICT (id) DO NOTHING";
       const result = await client.query(safe);
       const inserted = result.rowCount ?? 0;
 
