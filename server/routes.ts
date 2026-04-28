@@ -464,26 +464,14 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      // Mock browser-only APIs that pdfjs-dist requires in Node.js
-      if (typeof (global as any).DOMMatrix === "undefined") {
-        (global as any).DOMMatrix = class DOMMatrix {
-          static fromMatrix() { return new (global as any).DOMMatrix(); }
-        };
-      }
-      if (typeof (global as any).ImageData === "undefined") {
-        (global as any).ImageData = class ImageData {
-          constructor(public width: number, public height: number) {}
-        };
-      }
-      if (typeof (global as any).Path2D === "undefined") {
-        (global as any).Path2D = class Path2D {};
-      }
-
       // esbuild may single- or double-wrap CJS default exports
       const pdfParseModule: any = await import("pdf-parse");
       let pdfParse: any = pdfParseModule;
       if (typeof pdfParse !== "function") pdfParse = pdfParse.default;
       if (typeof pdfParse !== "function") pdfParse = pdfParse.default;
+      if (typeof pdfParse !== "function") {
+        return res.status(500).json({ message: "PDF parser failed to load. Please try again." });
+      }
       let pdfData: any;
       try {
         pdfData = await pdfParse(req.file.buffer);
