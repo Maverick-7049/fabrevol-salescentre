@@ -7,7 +7,39 @@ import { leads, insertSupplierSchema } from "@shared/schema";
 import { seedLeads } from "./seed-data";
 import OpenAI from "openai";
 import multer from "multer";
-import pdfParse from "pdf-parse";
+
+/**
+ * Extract readable text from a PDF buffer without any external library.
+ * Works for machine-generated PDFs (e.g. product TDS sheets).
+ */
+function extractPdfText(buffer: Buffer): string {
+  const raw = buffer.toString("binary");
+  const parts: string[] = [];
+
+  // Literal strings:  (Hello World)
+  const litRe = /\((?:[^()\\]|\\.)*\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = litRe.exec(raw)) !== null) {
+    const s = m[0]
+      .slice(1, -1)
+      .replace(/\\n/g, " ").replace(/\\r/g, " ").replace(/\\t/g, " ")
+      .replace(/\\\(/g, "(").replace(/\\\)/g, ")").replace(/\\\\/g, "\\")
+      .replace(/\\[0-7]{3}/g, " ");
+    if (/[A-Za-z]{3,}/.test(s)) parts.push(s.trim());
+  }
+
+  // Hex strings:  <48656c6c6f>
+  const hexRe = /<([0-9A-Fa-f]{4,})>/g;
+  while ((m = hexRe.exec(raw)) !== null) {
+    const hex = m[1];
+    let s = "";
+    for (let i = 0; i + 1 < hex.length; i += 2)
+      s += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
+    if (/[A-Za-z]{3,}/.test(s)) parts.push(s.trim());
+  }
+
+  return parts.join(" ").replace(/\s+/g, " ").trim().substring(0, 4000);
+}
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -467,7 +499,7 @@ Return ONLY the JSON object, no markdown or explanation.`;
 
       let pdfData: any;
       try {
-        pdfData = await pdfParse(req.file.buffer);
+        pdfData = { text: extractPdfText(req.file.buffer) };
       } catch (pdfErr: any) {
         console.error("PDF parse error:", pdfErr?.message);
         return res.status(500).json({ message: `Failed to read PDF: ${pdfErr?.message || "Unknown error"}` });
