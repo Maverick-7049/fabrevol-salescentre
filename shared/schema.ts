@@ -29,6 +29,12 @@ export const leads = pgTable("leads", {
   activities: jsonb("activities").default([]),
   deletedAt: timestamp("deleted_at"),
   deleteReason: text("delete_reason"),
+  // Company size: A = MNC/large listed, B = mid-large, C = regional SME, D = small/startup
+  companySize: text("company_size"),
+  // Verification: unverified | partial | verified | invalid
+  verificationStatus: text("verification_status").default("unverified"),
+  // Signals: { website, linkedin, gst, phone, manual }
+  verificationSignals: jsonb("verification_signals").default({}),
 });
 
 export const activitySchema = z.object({

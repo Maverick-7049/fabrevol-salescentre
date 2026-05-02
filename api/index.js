@@ -2606,6 +2606,25 @@ var seedLeads = [
 // server/routes.ts
 import OpenAI from "openai";
 import multer from "multer";
+function extractPdfText(buffer) {
+  const raw = buffer.toString("binary");
+  const parts = [];
+  const litRe = /\((?:[^()\\]|\\.)*\)/g;
+  let m;
+  while ((m = litRe.exec(raw)) !== null) {
+    const s = m[0].slice(1, -1).replace(/\\n/g, " ").replace(/\\r/g, " ").replace(/\\t/g, " ").replace(/\\\(/g, "(").replace(/\\\)/g, ")").replace(/\\\\/g, "\\").replace(/\\[0-7]{3}/g, " ");
+    if (/[A-Za-z]{3,}/.test(s)) parts.push(s.trim());
+  }
+  const hexRe = /<([0-9A-Fa-f]{4,})>/g;
+  while ((m = hexRe.exec(raw)) !== null) {
+    const hex = m[1];
+    let s = "";
+    for (let i = 0; i + 1 < hex.length; i += 2)
+      s += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
+    if (/[A-Za-z]{3,}/.test(s)) parts.push(s.trim());
+  }
+  return parts.join(" ").replace(/\s+/g, " ").trim().substring(0, 4e3);
+}
 var upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 var openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
@@ -2822,16 +2841,22 @@ For each company, return a JSON array with objects containing:
 - "intelligence": A 2-3 sentence procurement intelligence note about the company covering: capacity/scale, certifications (ISO, FDA, CE etc.), parent company or group, and any known procurement patterns or decision-making structure.
 
 Return a JSON object with a "companies" key containing the array of company objects. Example: {"companies": [...]}`;
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        { role: "system", content: "You are a B2B sales intelligence tool. Always respond with a valid JSON array of company objects. No markdown, no explanation." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 6e3,
-      response_format: { type: "json_object" }
-    });
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are a B2B sales intelligence tool. Always respond with a valid JSON array of company objects. No markdown, no explanation." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 6e3,
+        response_format: { type: "json_object" }
+      });
+    } catch (aiErr) {
+      console.error("OpenAI API error:", aiErr?.message || aiErr);
+      throw new Error(`OpenAI error: ${aiErr?.message || "Unknown AI error"}`);
+    }
     const content = response.choices[0]?.message?.content || "{}";
     let rawParsed;
     try {
@@ -2881,6 +2906,10 @@ Return a JSON object with a "companies" key containing the array of company obje
     return savedLeads;
   }
   app2.post("/api/leads/generate", async (req, res) => {
+    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      return res.status(500).json({ message: "OpenAI API key is not configured. Please set OPENAI_API_KEY in Vercel environment variables." });
+    }
     try {
       const genInput = generateInputSchema.safeParse(req.body);
       if (!genInput.success) {
@@ -2907,7 +2936,8 @@ Return a JSON object with a "companies" key containing the array of company obje
       res.status(201).json(savedLeads);
     } catch (err) {
       console.error("Error generating leads:", err);
-      res.status(500).json({ message: "Failed to generate leads. Please try again." });
+      const detail = err?.message || String(err);
+      res.status(500).json({ message: `Failed to generate leads: ${detail}` });
     }
   });
   const ALL_INDUSTRIES = [
@@ -2949,17 +2979,23 @@ Return a JSON object with:
 - "keywords": An array of 5-10 lowercase search keywords that would help match this product to potential buyers. Include the product name, chemical synonyms, common abbreviations, application terms, and related product categories.
 
 Return ONLY the JSON object, no markdown or explanation.`;
-      const response = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2e3,
-        response_format: { type: "json_object" }
-      });
-      const content = response.choices[0]?.message?.content || "{}";
+      let aiResponse;
+      try {
+        aiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2e3,
+          response_format: { type: "json_object" }
+        });
+      } catch (aiErr) {
+        console.error("OpenAI error (analyze-text):", aiErr?.message);
+        return res.status(500).json({ message: `OpenAI error: ${aiErr?.message || "Unknown error"}` });
+      }
+      const content = aiResponse.choices[0]?.message?.content || "{}";
       const aiResult = JSON.parse(content);
       const product = await storage.createProduct({
         name: aiResult.name || name.trim(),
@@ -2973,7 +3009,7 @@ Return ONLY the JSON object, no markdown or explanation.`;
       res.status(201).json(product);
     } catch (err) {
       console.error("Error analyzing product:", err);
-      res.status(500).json({ message: "Failed to analyze product. Please try again." });
+      res.status(500).json({ message: `Failed to analyze product: ${err?.message || err}` });
     }
   });
   app2.post("/api/products/analyze-pdf", upload.single("pdf"), async (req, res) => {
@@ -2981,10 +3017,13 @@ Return ONLY the JSON object, no markdown or explanation.`;
       if (!req.file) {
         return res.status(400).json({ message: "PDF file is required" });
       }
-      const { createRequire } = await import("module");
-      const require2 = createRequire(import.meta.url);
-      const pdfParse = require2("pdf-parse");
-      const pdfData = await pdfParse(req.file.buffer);
+      let pdfData;
+      try {
+        pdfData = { text: extractPdfText(req.file.buffer) };
+      } catch (pdfErr) {
+        console.error("PDF parse error:", pdfErr?.message);
+        return res.status(500).json({ message: `Failed to read PDF: ${pdfErr?.message || "Unknown error"}` });
+      }
       const pdfText = pdfData.text.substring(0, 4e3);
       const prompt = `You are a specialty chemicals sales intelligence tool for Fabrevol, an Indian chemicals supplier.
 
@@ -3002,17 +3041,23 @@ Return a JSON object with:
 - "keywords": An array of 5-10 lowercase search keywords that would help match this product to potential buyers. Include the product name, chemical synonyms, common abbreviations, application terms, and related product categories mentioned in the TDS.
 
 Return ONLY the JSON object, no markdown or explanation.`;
-      const response = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
-        messages: [
-          { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2e3,
-        response_format: { type: "json_object" }
-      });
-      const content = response.choices[0]?.message?.content || "{}";
+      let pdfAiResponse;
+      try {
+        pdfAiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2e3,
+          response_format: { type: "json_object" }
+        });
+      } catch (aiErr) {
+        console.error("OpenAI error (analyze-pdf):", aiErr?.message);
+        return res.status(500).json({ message: `OpenAI error: ${aiErr?.message || "Unknown error"}` });
+      }
+      const content = pdfAiResponse.choices[0]?.message?.content || "{}";
       const pdfAiResult = JSON.parse(content);
       const product = await storage.createProduct({
         name: pdfAiResult.name || req.file.originalname || "Unknown Product",
@@ -3026,7 +3071,7 @@ Return ONLY the JSON object, no markdown or explanation.`;
       res.status(201).json(product);
     } catch (err) {
       console.error("Error analyzing PDF:", err);
-      res.status(500).json({ message: "Failed to analyze PDF. Please try again." });
+      res.status(500).json({ message: `Failed to analyze PDF: ${err?.message || err}` });
     }
   });
   app2.delete("/api/products/:id", async (req, res) => {

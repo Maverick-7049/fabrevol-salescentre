@@ -257,6 +257,7 @@ export async function registerRoutes(
     tags: z.array(z.string()).default([]),
     pitch: z.string().default(""),
     intelligence: z.string().default(""),
+    companySize: z.enum(["A", "B", "C", "D"]).optional(),
   });
 
   async function generateLeadsForIndustry(industry: string, region: string, count: number, product: string | undefined, existingLeads: any[]) {
@@ -294,6 +295,7 @@ For each company, return a JSON array with objects containing:
 - "tags": Array of 2-4 relevant tags about the company (products, certifications, specializations)
 - "pitch": A detailed 3-4 sentence sales pitch structured as: (1) WHICH specific Fabrevol product to pitch, (2) WHY this company needs it — referencing their actual manufacturing processes or products, (3) our competitive advantage (cost savings, regulatory compliance, technical superiority, or reliability of supply), and (4) a suggested opening angle for the first conversation (e.g. "Offer a free trial batch" or "Lead with compliance documentation"). Make it actionable for the sales rep.
 - "intelligence": A 2-3 sentence procurement intelligence note about the company covering: capacity/scale, certifications (ISO, FDA, CE etc.), parent company or group, and any known procurement patterns or decision-making structure.
+- "companySize": One letter — "A" (MNC or large listed Indian company, >₹500 Cr turnover), "B" (established mid-large, ₹50–500 Cr), "C" (regional SME, ₹5–50 Cr), or "D" (small manufacturer/startup, <₹5 Cr). Base this on the company's known scale, group affiliation, and market presence.
 
 Return a JSON object with a "companies" key containing the array of company objects. Example: {"companies": [...]}`;
 
@@ -342,6 +344,17 @@ Return a JSON object with a "companies" key containing the array of company obje
       if (allExisting.includes(companyLower)) continue;
 
       try {
+        // Auto-set verification signals from AI-provided data
+        const verificationSignals: Record<string, boolean> = {
+          website: !!(lead.website),
+          linkedin: !!(lead.linkedin),
+          gst: false,
+          phone: false,
+          manual: false,
+        };
+        const signalCount = Object.values(verificationSignals).filter(Boolean).length;
+        const verificationStatus = signalCount >= 2 ? "partial" : signalCount === 1 ? "partial" : "unverified";
+
         const saved = await storage.createLead({
           company: lead.company,
           industry: industry,
@@ -365,6 +378,9 @@ Return a JSON object with a "companies" key containing the array of company obje
           nextFollowUp: null,
           nextAction: null,
           activities: [],
+          companySize: lead.companySize || null,
+          verificationStatus,
+          verificationSignals,
         });
         savedLeads.push(saved);
       } catch (err) {
