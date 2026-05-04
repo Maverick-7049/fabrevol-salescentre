@@ -513,60 +513,67 @@ Return ONLY the JSON object, no markdown or explanation.`;
         return res.status(400).json({ message: "PDF file is required" });
       }
 
-      let pdfData: any;
-      try {
-        pdfData = { text: extractPdfText(req.file.buffer) };
-      } catch (pdfErr: any) {
-        console.error("PDF parse error:", pdfErr?.message);
-        return res.status(500).json({ message: `Failed to read PDF: ${pdfErr?.message || "Unknown error"}` });
-      }
-      const pdfText = pdfData.text.substring(0, 4000);
+      const filename = req.file.originalname || "product.pdf";
+      const base64Pdf = req.file.buffer.toString("base64");
 
       const prompt = `You are a specialty chemicals sales intelligence tool for Fabrevol, an Indian chemicals supplier.
 
-Analyze this product technical data sheet (TDS) text extracted from a PDF:
-
----
-${pdfText}
----
-
-Return a JSON object with:
-- "name": The product name extracted from the document (clean, standard industry name)
-- "description": A 2-3 sentence description of what this product is, its chemical composition/type, and its key properties based on the TDS
-- "applications": A 2-3 sentence description of the main industrial applications and use cases mentioned in the TDS
-- "targetIndustries": An array of industries from this list that would buy this product: ${JSON.stringify(ALL_INDUSTRIES)}. Only include industries where this product has clear relevance based on the applications described.
-- "keywords": An array of 5-10 lowercase search keywords that would help match this product to potential buyers. Include the product name, chemical synonyms, common abbreviations, application terms, and related product categories mentioned in the TDS.
+Read this product Technical Data Sheet (TDS) PDF and return a JSON object with:
+- "name": The exact product name from the document (clean, standard industry name — NOT "Product X" or a placeholder)
+- "description": A 2-3 sentence description of what this product is, its chemical composition/type, and key properties from the TDS
+- "applications": A 2-3 sentence description of industrial applications and use cases mentioned in the TDS
+- "targetIndustries": An array of industries from this list that would buy this product: ${JSON.stringify(ALL_INDUSTRIES)}. Only include industries with clear relevance.
+- "keywords": An array of 5-10 lowercase search keywords to match this product to buyers. Include the product name, chemical synonyms, abbreviations, application terms, and related product categories.
 
 Return ONLY the JSON object, no markdown or explanation.`;
 
+      // Upload the PDF to OpenAI Files API so gpt-4o can read it natively
+      let uploadedFileId: string | null = null;
       let pdfAiResponse;
       try {
+        const uploadedFile = await openai.files.create({
+          file: new File([req.file.buffer], filename, { type: "application/pdf" }),
+          purpose: "user_data",
+        });
+        uploadedFileId = uploadedFile.id;
+
         pdfAiResponse = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-4o",
           messages: [
-            { role: "system", content: "You are a chemicals industry expert. Respond only with valid JSON." },
-            { role: "user", content: prompt }
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                // @ts-expect-error – file content type supported by gpt-4o but not yet in SDK types
+                { type: "file", file: { file_id: uploadedFileId } },
+              ],
+            },
           ],
-          temperature: 0.3,
+          temperature: 0.2,
           max_tokens: 2000,
           response_format: { type: "json_object" },
         });
       } catch (aiErr: any) {
         console.error("OpenAI error (analyze-pdf):", aiErr?.message);
         return res.status(500).json({ message: `OpenAI error: ${aiErr?.message || "Unknown error"}` });
+      } finally {
+        // Clean up the uploaded file regardless of success/failure
+        if (uploadedFileId) {
+          openai.files.del(uploadedFileId).catch(() => {});
+        }
       }
 
       const content = pdfAiResponse.choices[0]?.message?.content || "{}";
       const pdfAiResult = JSON.parse(content);
 
       const product = await storage.createProduct({
-        name: pdfAiResult.name || req.file!.originalname || "Unknown Product",
+        name: pdfAiResult.name || filename.replace(".pdf", ""),
         description: pdfAiResult.description || null,
         applications: pdfAiResult.applications || null,
         targetIndustries: pdfAiResult.targetIndustries || [],
         keywords: pdfAiResult.keywords || [],
         source: "pdf",
-        pdfName: req.file!.originalname || null,
+        pdfName: filename,
       });
 
       res.status(201).json(product);
