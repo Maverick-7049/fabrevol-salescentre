@@ -527,43 +527,34 @@ Read this product Technical Data Sheet (TDS) PDF and return a JSON object with:
 
 Return ONLY the JSON object, no markdown or explanation.`;
 
-      // Upload the PDF to OpenAI Files API so gpt-4o can read it natively
-      let uploadedFileId: string | null = null;
-      let pdfAiResponse;
+      // Use OpenAI Responses API — the only API with native PDF support
+      let pdfAiContent: string;
       try {
-        const uploadedFile = await openai.files.create({
-          file: new File([req.file.buffer], filename, { type: "application/pdf" }),
-          purpose: "user_data",
-        });
-        uploadedFileId = uploadedFile.id;
-
-        pdfAiResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
+        const pdfResponse = await (openai as any).responses.create({
+          model: "gpt-4o-mini",
+          input: [
             {
               role: "user",
               content: [
-                { type: "text", text: prompt },
-                // @ts-expect-error – file content type supported by gpt-4o but not yet in SDK types
-                { type: "file", file: { file_id: uploadedFileId } },
+                {
+                  type: "input_file",
+                  filename,
+                  file_data: `data:application/pdf;base64,${base64Pdf}`,
+                },
+                { type: "input_text", text: prompt },
               ],
             },
           ],
-          temperature: 0.2,
-          max_tokens: 2000,
-          response_format: { type: "json_object" },
         });
+        pdfAiContent = pdfResponse.output_text || "{}";
+        // Strip markdown code fences if present
+        pdfAiContent = pdfAiContent.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
       } catch (aiErr: any) {
         console.error("OpenAI error (analyze-pdf):", aiErr?.message);
         return res.status(500).json({ message: `OpenAI error: ${aiErr?.message || "Unknown error"}` });
-      } finally {
-        // Clean up the uploaded file regardless of success/failure
-        if (uploadedFileId) {
-          openai.files.del(uploadedFileId).catch(() => {});
-        }
       }
 
-      const content = pdfAiResponse.choices[0]?.message?.content || "{}";
+      const content = pdfAiContent || "{}";
       const pdfAiResult = JSON.parse(content);
 
       const product = await storage.createProduct({
