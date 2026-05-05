@@ -9,6 +9,7 @@ import Targets from "@/pages/Targets";
 import Roadmap from "@/pages/Roadmap";
 import CRM from "@/pages/CRM";
 import Suppliers from "@/pages/Suppliers";
+import PurchaseOrders from "@/pages/PurchaseOrders";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/targets" component={Targets} />
       <Route path="/crm" component={CRM} />
       <Route path="/suppliers" component={Suppliers} />
+      <Route path="/purchase-orders" component={PurchaseOrders} />
       <Route path="/roadmap" component={Roadmap} />
       <Route component={NotFound} />
     </Switch>

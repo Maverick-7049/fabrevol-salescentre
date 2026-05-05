@@ -1,5 +1,13 @@
 import { db } from "./db";
-import { leads, products, suppliers, type Lead, type InsertLead, type Product, type InsertProduct, type Supplier, type InsertSupplier } from "@shared/schema";
+import {
+  leads, products, suppliers, poSuppliers, poAddresses, purchaseOrders,
+  type Lead, type InsertLead,
+  type Product, type InsertProduct,
+  type Supplier, type InsertSupplier,
+  type PoSupplier, type InsertPoSupplier,
+  type PoAddress, type InsertPoAddress,
+  type PurchaseOrder, type InsertPurchaseOrder,
+} from "@shared/schema";
 import { eq, desc, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
@@ -17,6 +25,22 @@ export interface IStorage {
   createSupplier(insertSupplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: number, updates: Partial<InsertSupplier>): Promise<Supplier>;
   deleteSupplier(id: number): Promise<void>;
+  // PO Suppliers
+  getPoSuppliers(): Promise<PoSupplier[]>;
+  createPoSupplier(data: InsertPoSupplier): Promise<PoSupplier>;
+  updatePoSupplier(id: number, data: Partial<InsertPoSupplier>): Promise<PoSupplier>;
+  deletePoSupplier(id: number): Promise<void>;
+  // PO Addresses
+  getPoAddresses(): Promise<PoAddress[]>;
+  createPoAddress(data: InsertPoAddress): Promise<PoAddress>;
+  updatePoAddress(id: number, data: Partial<InsertPoAddress>): Promise<PoAddress>;
+  deletePoAddress(id: number): Promise<void>;
+  // Purchase Orders
+  getPurchaseOrders(): Promise<PurchaseOrder[]>;
+  getPurchaseOrder(id: number): Promise<PurchaseOrder | undefined>;
+  createPurchaseOrder(data: InsertPurchaseOrder): Promise<PurchaseOrder>;
+  updatePurchaseOrder(id: number, data: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder>;
+  deletePurchaseOrder(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -91,6 +115,68 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSupplier(id: number): Promise<void> {
     await db.delete(suppliers).where(eq(suppliers.id, id));
+  }
+
+  // ── PO Suppliers ─────────────────────────────────────────────────────────
+  async getPoSuppliers(): Promise<PoSupplier[]> {
+    return await db.select().from(poSuppliers).orderBy(poSuppliers.name);
+  }
+
+  async createPoSupplier(data: InsertPoSupplier): Promise<PoSupplier> {
+    const [row] = await db.insert(poSuppliers).values(data).returning();
+    return row;
+  }
+
+  async updatePoSupplier(id: number, data: Partial<InsertPoSupplier>): Promise<PoSupplier> {
+    const [row] = await db.update(poSuppliers).set(data).where(eq(poSuppliers.id, id)).returning();
+    return row;
+  }
+
+  async deletePoSupplier(id: number): Promise<void> {
+    await db.delete(poSuppliers).where(eq(poSuppliers.id, id));
+  }
+
+  // ── PO Addresses ─────────────────────────────────────────────────────────
+  async getPoAddresses(): Promise<PoAddress[]> {
+    return await db.select().from(poAddresses).orderBy(poAddresses.name);
+  }
+
+  async createPoAddress(data: InsertPoAddress): Promise<PoAddress> {
+    const [row] = await db.insert(poAddresses).values(data).returning();
+    return row;
+  }
+
+  async updatePoAddress(id: number, data: Partial<InsertPoAddress>): Promise<PoAddress> {
+    const [row] = await db.update(poAddresses).set(data).where(eq(poAddresses.id, id)).returning();
+    return row;
+  }
+
+  async deletePoAddress(id: number): Promise<void> {
+    await db.delete(poAddresses).where(eq(poAddresses.id, id));
+  }
+
+  // ── Purchase Orders ───────────────────────────────────────────────────────
+  async getPurchaseOrders(): Promise<PurchaseOrder[]> {
+    return await db.select().from(purchaseOrders).orderBy(desc(purchaseOrders.createdAt));
+  }
+
+  async getPurchaseOrder(id: number): Promise<PurchaseOrder | undefined> {
+    const [row] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id));
+    return row;
+  }
+
+  async createPurchaseOrder(data: InsertPurchaseOrder): Promise<PurchaseOrder> {
+    const [row] = await db.insert(purchaseOrders).values(data).returning();
+    return row;
+  }
+
+  async updatePurchaseOrder(id: number, data: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder> {
+    const [row] = await db.update(purchaseOrders).set(data).where(eq(purchaseOrders.id, id)).returning();
+    return row;
+  }
+
+  async deletePurchaseOrder(id: number): Promise<void> {
+    await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
   }
 }
 

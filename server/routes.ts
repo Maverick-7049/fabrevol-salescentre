@@ -3,7 +3,7 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { leads, insertSupplierSchema } from "@shared/schema";
+import { leads, insertSupplierSchema, insertPoSupplierSchema, insertPoAddressSchema, insertPurchaseOrderSchema } from "@shared/schema";
 import { seedLeads } from "./seed-data";
 import OpenAI from "openai";
 import multer from "multer";
@@ -754,6 +754,116 @@ Return ONLY the JSON object, no markdown or explanation.`;
     }
 
     res.json({ leadsImported, productsImported, suppliersImported });
+  });
+
+  // ── PO Suppliers ─────────────────────────────────────────────────────────
+  app.get("/api/po-suppliers", requireAuth, async (_req, res) => {
+    res.json(await storage.getPoSuppliers());
+  });
+
+  app.post("/api/po-suppliers", requireAuth, async (req, res) => {
+    try {
+      const input = insertPoSupplierSchema.parse(req.body);
+      res.status(201).json(await storage.createPoSupplier(input));
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.patch("/api/po-suppliers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    try {
+      const input = insertPoSupplierSchema.partial().parse(req.body);
+      res.json(await storage.updatePoSupplier(id, input));
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.delete("/api/po-suppliers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    await storage.deletePoSupplier(id);
+    res.status(204).end();
+  });
+
+  // ── PO Addresses ──────────────────────────────────────────────────────────
+  app.get("/api/po-addresses", requireAuth, async (_req, res) => {
+    res.json(await storage.getPoAddresses());
+  });
+
+  app.post("/api/po-addresses", requireAuth, async (req, res) => {
+    try {
+      const input = insertPoAddressSchema.parse(req.body);
+      res.status(201).json(await storage.createPoAddress(input));
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.patch("/api/po-addresses/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    try {
+      const input = insertPoAddressSchema.partial().parse(req.body);
+      res.json(await storage.updatePoAddress(id, input));
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.delete("/api/po-addresses/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    await storage.deletePoAddress(id);
+    res.status(204).end();
+  });
+
+  // ── Purchase Orders ───────────────────────────────────────────────────────
+  app.get("/api/purchase-orders", requireAuth, async (_req, res) => {
+    res.json(await storage.getPurchaseOrders());
+  });
+
+  app.get("/api/purchase-orders/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    const po = await storage.getPurchaseOrder(id);
+    if (!po) return res.status(404).json({ message: "Not found" });
+    res.json(po);
+  });
+
+  app.post("/api/purchase-orders", requireAuth, async (req, res) => {
+    try {
+      const input = insertPurchaseOrderSchema.parse(req.body);
+      res.status(201).json(await storage.createPurchaseOrder(input));
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.patch("/api/purchase-orders/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    try {
+      const input = insertPurchaseOrderSchema.partial().parse(req.body);
+      res.json(await storage.updatePurchaseOrder(id, input));
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
+  app.delete("/api/purchase-orders/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+    await storage.deletePurchaseOrder(id);
+    res.status(204).end();
   });
 
   return httpServer;

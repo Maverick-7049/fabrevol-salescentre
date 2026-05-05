@@ -1,7 +1,7 @@
 import { useLocation, Link } from "wouter";
-import { 
+import {
   Database, Users, CheckCircle, Mail,
-  Linkedin, Zap, BarChart3, LogOut, Package 
+  Linkedin, Zap, BarChart3, LogOut, Package, ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 const logoPath = "/fabrevol-logo.png";
@@ -14,6 +14,7 @@ export function Sidebar() {
     { label: "My Targets", icon: Users, path: "/targets" },
     { label: "CRM Pipeline", icon: BarChart3, path: "/crm" },
     { label: "My Suppliers", icon: Package, path: "/suppliers" },
+    { label: "Purchase Orders", icon: ClipboardList, path: "/purchase-orders" },
     { label: "Outreach", icon: Mail, path: "/roadmap" },
   ];
 

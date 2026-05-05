@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -96,6 +96,78 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
 
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+
+// ─── Purchase Order tables ─────────────────────────────────────────────────
+
+export const poSuppliers = pgTable("po_suppliers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  gstin: text("gstin"),
+  address: text("address"),
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPoSupplierSchema = createInsertSchema(poSuppliers).omit({ id: true, createdAt: true });
+export type PoSupplier = typeof poSuppliers.$inferSelect;
+export type InsertPoSupplier = z.infer<typeof insertPoSupplierSchema>;
+
+export const poAddresses = pgTable("po_addresses", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  gstin: text("gstin"),
+  phone: text("phone"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPoAddressSchema = createInsertSchema(poAddresses).omit({ id: true, createdAt: true });
+export type PoAddress = typeof poAddresses.$inferSelect;
+export type InsertPoAddress = z.infer<typeof insertPoAddressSchema>;
+
+export const poItemSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  packs: z.number().nullable(),
+  kgPerPack: z.number().nullable(),
+  totalQty: z.number(),
+  unit: z.string(),
+  rate: z.number(),
+  amount: z.number(),
+});
+export type POItem = z.infer<typeof poItemSchema>;
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: serial("id").primaryKey(),
+  poNumber: text("po_number").notNull(),
+  date: text("date").notNull(),
+  supplierId: integer("supplier_id"),
+  supplierName: text("supplier_name"),
+  shipToAddressId: integer("ship_to_address_id"),
+  shipToName: text("ship_to_name"),
+  shipToAddress: text("ship_to_address"),
+  shipToGstin: text("ship_to_gstin"),
+  shipToPhone: text("ship_to_phone"),
+  items: jsonb("items").default([]),
+  gstType: text("gst_type").default("igst"),  // "igst" | "cgst_sgst"
+  paymentTerms: text("payment_terms"),
+  transportTerms: text("transport_terms"),
+  insuranceTerms: text("insurance_terms"),
+  dispatchSchedule: text("dispatch_schedule"),
+  transporterDetails: text("transporter_details"),
+  notes: text("notes"),
+  subtotal: real("subtotal").default(0),
+  gstAmount: real("gst_amount").default(0),
+  totalAmount: real("total_amount").default(0),
+  status: text("status").default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({ id: true, createdAt: true });
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
 
 export const DEAL_STAGES = [
   { id: "new", label: "New", color: "bg-slate-500" },
