@@ -110,24 +110,40 @@ function calcTotals(items: POItem[], gstType: string) {
   return { subtotal, gstAmount, totalAmount };
 }
 
+// Fabrevol own address — available as a built-in Ship To option
+const FABREVOL_SHIP_OPTION = {
+  id: -1,
+  name: COMPANY.name,
+  address: COMPANY.address,
+  gstin: COMPANY.gstin,
+  phone: COMPANY.phone,
+};
+
 function newItem(): POItem {
   return { id: crypto.randomUUID(), description: "", packs: null, kgPerPack: null, totalQty: 0, unit: "Kgs", rate: 0, amount: 0 };
 }
 
 // ── Print / PDF view ──────────────────────────────────────────────────────────
 function POPrintView({ po, supplier }: { po: PurchaseOrder; supplier?: PoSupplier | null }) {
-  const gstLabel = po.gstType === "cgst_sgst" ? "CGST + SGST (9% each)" : "IGST @ 18%";
   const halfGst = po.gstAmount / 2;
   return (
     <div className="po-print-body bg-white text-black font-sans text-[13px]" style={{ fontFamily: "Arial, sans-serif" }}>
       {/* Header */}
       <div style={{ border: "2px solid #1a5276", borderRadius: 6, padding: "14px 18px", marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#1a5276", letterSpacing: 1 }}>FABREVOL</div>
-            <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{COMPANY.address}</div>
-            <div style={{ fontSize: 11, color: "#555" }}>Phone: {COMPANY.phone} | Email: {COMPANY.email}</div>
-            <div style={{ fontSize: 11, color: "#555" }}>GSTIN: <strong>{COMPANY.gstin}</strong></div>
+          {/* Logo + company info */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <img
+              src="/fabrevol-logo.png"
+              alt="Fabrevol"
+              style={{ width: 56, height: 56, objectFit: "contain", flexShrink: 0 }}
+            />
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#1a5276", letterSpacing: 1 }}>FABREVOL</div>
+              <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{COMPANY.address}</div>
+              <div style={{ fontSize: 11, color: "#555" }}>Phone: {COMPANY.phone} | Email: {COMPANY.email}</div>
+              <div style={{ fontSize: 11, color: "#555" }}>GSTIN: <strong>{COMPANY.gstin}</strong></div>
+            </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#1a5276", letterSpacing: 2 }}>PURCHASE ORDER</div>
@@ -176,24 +192,20 @@ function POPrintView({ po, supplier }: { po: PurchaseOrder; supplier?: PoSupplie
       <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12, fontSize: 12 }}>
         <thead>
           <tr style={{ backgroundColor: "#1a5276", color: "#fff" }}>
-            <th style={{ padding: "7px 10px", textAlign: "left", width: 30 }}>S.No</th>
-            <th style={{ padding: "7px 10px", textAlign: "left" }}>Description</th>
-            <th style={{ padding: "7px 10px", textAlign: "center" }}>Quantity</th>
-            <th style={{ padding: "7px 10px", textAlign: "center" }}>Unit</th>
-            <th style={{ padding: "7px 10px", textAlign: "right" }}>Rate (₹)</th>
-            <th style={{ padding: "7px 10px", textAlign: "right" }}>Amount (₹)</th>
+            <th style={{ padding: "7px 10px", textAlign: "center", width: 36 }}>S.N.</th>
+            <th style={{ padding: "7px 10px", textAlign: "left" }}>Item</th>
+            <th style={{ padding: "7px 10px", textAlign: "center", width: 90 }}>Quantity</th>
+            <th style={{ padding: "7px 10px", textAlign: "center", width: 70 }}>Unit</th>
+            <th style={{ padding: "7px 10px", textAlign: "right", width: 100 }}>Rate (₹)</th>
+            <th style={{ padding: "7px 10px", textAlign: "right", width: 120 }}>Amount (₹)</th>
           </tr>
         </thead>
         <tbody>
           {(po.items || []).map((item, idx) => (
             <tr key={item.id} style={{ backgroundColor: idx % 2 === 0 ? "#f8f9fa" : "#fff", borderBottom: "1px solid #ddd" }}>
-              <td style={{ padding: "7px 10px" }}>{idx + 1}</td>
+              <td style={{ padding: "7px 10px", textAlign: "center" }}>{idx + 1}</td>
               <td style={{ padding: "7px 10px", fontWeight: 500 }}>{item.description}</td>
-              <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                {item.packs && item.kgPerPack
-                  ? `${item.packs} × ${item.kgPerPack} = ${item.totalQty}`
-                  : item.totalQty}
-              </td>
+              <td style={{ padding: "7px 10px", textAlign: "center" }}>{item.totalQty}</td>
               <td style={{ padding: "7px 10px", textAlign: "center" }}>{item.unit}</td>
               <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmt(item.rate)}</td>
               <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmt(item.amount)}</td>
@@ -253,14 +265,9 @@ function POPrintView({ po, supplier }: { po: PurchaseOrder; supplier?: PoSupplie
         </div>
       )}
 
-      {/* Signature */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
-        <div style={{ textAlign: "center", minWidth: 180 }}>
-          <div style={{ borderTop: "1px solid #333", paddingTop: 4, fontSize: 11 }}>
-            <div style={{ fontWeight: 600 }}>For Fabrevol</div>
-            <div style={{ color: "#555" }}>Authorised Signatory</div>
-          </div>
-        </div>
+      {/* Electronic note */}
+      <div style={{ marginTop: 20, textAlign: "center", fontSize: 10, color: "#888", fontStyle: "italic", borderTop: "1px solid #eee", paddingTop: 8 }}>
+        This is an electronically generated Purchase Order. Signature not required.
       </div>
     </div>
   );
@@ -354,6 +361,17 @@ export default function PurchaseOrders() {
   }
 
   function selectAddress(addrId: string) {
+    if (addrId === "fabrevol") {
+      setForm((f) => ({
+        ...f,
+        shipToAddressId: -1,
+        shipToName: FABREVOL_SHIP_OPTION.name,
+        shipToAddress: FABREVOL_SHIP_OPTION.address,
+        shipToGstin: FABREVOL_SHIP_OPTION.gstin,
+        shipToPhone: FABREVOL_SHIP_OPTION.phone,
+      }));
+      return;
+    }
     const a = poAddresses.find((x) => x.id === parseInt(addrId));
     if (!a) return;
     setForm((f) => ({
@@ -423,10 +441,104 @@ export default function PurchaseOrders() {
     );
   }
 
+  // ── Shared dialogs (rendered in all views) ───────────────────────────────
+  const supplierDialog = (
+    <Dialog open={showSupplierDialog} onOpenChange={(o) => { setShowSupplierDialog(o); if (!o) { setEditingSupplier(null); setSupForm({}); } }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{editingSupplier ? "Edit Supplier" : "Manage Suppliers"}</DialogTitle>
+        </DialogHeader>
+        {!editingSupplier && (
+          <div className="space-y-2 max-h-60 overflow-auto mb-4">
+            {poSuppliers.map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-2 rounded border text-sm">
+                <div>
+                  <div className="font-medium">{s.name}</div>
+                  {s.gstin && <div className="text-xs text-slate-500">GSTIN: {s.gstin}</div>}
+                  {s.address && <div className="text-xs text-slate-400 truncate max-w-xs">{s.address}</div>}
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => { setEditingSupplier(s); setSupForm(s); }} className="text-slate-500 hover:text-slate-800 p-1"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => deleteSup.mutate(s.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-3">
+          <div><Label>Supplier Name *</Label><Input value={supForm.name || ""} onChange={(e) => setSupForm((f) => ({ ...f, name: e.target.value }))} /></div>
+          <div><Label>GSTIN</Label><Input value={supForm.gstin || ""} onChange={(e) => setSupForm((f) => ({ ...f, gstin: e.target.value }))} /></div>
+          <div><Label>Address</Label><Textarea rows={2} value={supForm.address || ""} onChange={(e) => setSupForm((f) => ({ ...f, address: e.target.value }))} /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label>Contact Name</Label><Input value={supForm.contactName || ""} onChange={(e) => setSupForm((f) => ({ ...f, contactName: e.target.value }))} /></div>
+            <div><Label>Phone</Label><Input value={supForm.contactPhone || ""} onChange={(e) => setSupForm((f) => ({ ...f, contactPhone: e.target.value }))} /></div>
+          </div>
+          <div><Label>Email</Label><Input value={supForm.contactEmail || ""} onChange={(e) => setSupForm((f) => ({ ...f, contactEmail: e.target.value }))} /></div>
+        </div>
+        <div className="flex gap-2 justify-end mt-4">
+          {editingSupplier && <Button variant="ghost" onClick={() => { setEditingSupplier(null); setSupForm({}); }}>← Back</Button>}
+          <Button className="bg-[#1a5276] text-white" onClick={() => {
+            if (!supForm.name) return;
+            if (editingSupplier) updateSup.mutate({ id: editingSupplier.id, d: supForm });
+            else createSup.mutate(supForm);
+          }}>
+            {editingSupplier ? "Update" : "Add Supplier"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const addressDialog = (
+    <Dialog open={showAddressDialog} onOpenChange={(o) => { setShowAddressDialog(o); if (!o) { setEditingAddress(null); setAddrForm({}); } }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{editingAddress ? "Edit Address" : "Manage Delivery Addresses"}</DialogTitle>
+        </DialogHeader>
+        {!editingAddress && (
+          <div className="space-y-2 max-h-60 overflow-auto mb-4">
+            {poAddresses.map((a) => (
+              <div key={a.id} className="flex items-center justify-between p-2 rounded border text-sm">
+                <div>
+                  <div className="font-medium">{a.name}</div>
+                  <div className="text-xs text-slate-500 truncate max-w-xs">{a.address}</div>
+                  {a.gstin && <div className="text-xs text-slate-500">GSTIN: {a.gstin}</div>}
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => { setEditingAddress(a); setAddrForm(a); }} className="text-slate-500 hover:text-slate-800 p-1"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => deleteAddr.mutate(a.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid gap-3">
+          <div><Label>Company / Location Name *</Label><Input value={addrForm.name || ""} onChange={(e) => setAddrForm((f) => ({ ...f, name: e.target.value }))} /></div>
+          <div><Label>Full Address *</Label><Textarea rows={3} value={addrForm.address || ""} onChange={(e) => setAddrForm((f) => ({ ...f, address: e.target.value }))} /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label>GSTIN</Label><Input value={addrForm.gstin || ""} onChange={(e) => setAddrForm((f) => ({ ...f, gstin: e.target.value }))} /></div>
+            <div><Label>Phone</Label><Input value={addrForm.phone || ""} onChange={(e) => setAddrForm((f) => ({ ...f, phone: e.target.value }))} /></div>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end mt-4">
+          {editingAddress && <Button variant="ghost" onClick={() => { setEditingAddress(null); setAddrForm({}); }}>← Back</Button>}
+          <Button className="bg-[#1a5276] text-white" onClick={() => {
+            if (!addrForm.name || !addrForm.address) return;
+            if (editingAddress) updateAddr.mutate({ id: editingAddress.id, d: addrForm });
+            else createAddr.mutate(addrForm);
+          }}>
+            {editingAddress ? "Update" : "Add Address"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   // ─────────────────────────────────────────────────────────────────────────
   // FORM VIEW
   if (view === "form") {
     return (
+      <>
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <main className="flex-1 md:ml-64 overflow-auto p-6">
@@ -495,9 +607,13 @@ export default function PurchaseOrders() {
                     <Plus className="w-3 h-3 mr-1" /> Add Address
                   </Button>
                 </div>
-                <Select value={form.shipToAddressId ? String(form.shipToAddressId) : ""} onValueChange={selectAddress}>
+                <Select
+                  value={form.shipToAddressId === -1 ? "fabrevol" : form.shipToAddressId ? String(form.shipToAddressId) : ""}
+                  onValueChange={selectAddress}
+                >
                   <SelectTrigger><SelectValue placeholder="Select delivery address…" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="fabrevol">🏢 Fabrevol (Own Address)</SelectItem>
                     {poAddresses.map((a) => (
                       <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
                     ))}
@@ -532,27 +648,21 @@ export default function PurchaseOrders() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-100 text-slate-600">
-                        <th className="text-left p-2 rounded-l">Description</th>
-                        <th className="text-center p-2 w-20">Packs</th>
-                        <th className="text-center p-2 w-24">Kg/Pack</th>
-                        <th className="text-center p-2 w-24">Total Qty</th>
-                        <th className="text-center p-2 w-20">Unit</th>
-                        <th className="text-right p-2 w-28">Rate (₹)</th>
-                        <th className="text-right p-2 w-28 rounded-r">Amount (₹)</th>
+                        <th className="text-center p-2 w-10 rounded-l">S.N.</th>
+                        <th className="text-left p-2">Item</th>
+                        <th className="text-center p-2 w-28">Quantity</th>
+                        <th className="text-center p-2 w-24">Unit</th>
+                        <th className="text-right p-2 w-32">Rate (₹)</th>
+                        <th className="text-right p-2 w-32 rounded-r">Amount (₹)</th>
                         <th className="w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((item) => (
+                      {items.map((item, idx) => (
                         <tr key={item.id} className="border-b border-slate-100">
+                          <td className="p-1 text-center text-slate-400 text-xs">{idx + 1}</td>
                           <td className="p-1">
                             <Input value={item.description} onChange={(e) => updateItem(item.id, "description", e.target.value)} placeholder="Product name…" className="h-8" />
-                          </td>
-                          <td className="p-1">
-                            <Input type="number" value={item.packs ?? ""} onChange={(e) => updateItem(item.id, "packs", e.target.value ? Number(e.target.value) : null)} placeholder="—" className="h-8 text-center" />
-                          </td>
-                          <td className="p-1">
-                            <Input type="number" value={item.kgPerPack ?? ""} onChange={(e) => updateItem(item.id, "kgPerPack", e.target.value ? Number(e.target.value) : null)} placeholder="—" className="h-8 text-center" />
                           </td>
                           <td className="p-1">
                             <Input type="number" value={item.totalQty || ""} onChange={(e) => updateItem(item.id, "totalQty", Number(e.target.value))} className="h-8 text-center" />
@@ -662,6 +772,9 @@ export default function PurchaseOrders() {
           </div>
         </main>
       </div>
+      {supplierDialog}
+      {addressDialog}
+      </>
     );
   }
 
@@ -745,96 +858,8 @@ export default function PurchaseOrders() {
         </div>
       </main>
 
-      {/* ── Supplier Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={showSupplierDialog} onOpenChange={(o) => { setShowSupplierDialog(o); if (!o) { setEditingSupplier(null); setSupForm({}); } }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingSupplier ? "Edit Supplier" : "Manage Suppliers"}</DialogTitle>
-          </DialogHeader>
-          {/* List */}
-          {!editingSupplier && (
-            <div className="space-y-2 max-h-60 overflow-auto mb-4">
-              {poSuppliers.map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-2 rounded border text-sm">
-                  <div>
-                    <div className="font-medium">{s.name}</div>
-                    {s.gstin && <div className="text-xs text-slate-500">GSTIN: {s.gstin}</div>}
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => { setEditingSupplier(s); setSupForm(s); }} className="text-slate-500 hover:text-slate-800 p-1"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => deleteSup.mutate(s.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Form */}
-          <div className="grid gap-3">
-            <div><Label>Supplier Name *</Label><Input value={supForm.name || ""} onChange={(e) => setSupForm((f) => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>GSTIN</Label><Input value={supForm.gstin || ""} onChange={(e) => setSupForm((f) => ({ ...f, gstin: e.target.value }))} /></div>
-            <div><Label>Address</Label><Textarea rows={2} value={supForm.address || ""} onChange={(e) => setSupForm((f) => ({ ...f, address: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Contact Name</Label><Input value={supForm.contactName || ""} onChange={(e) => setSupForm((f) => ({ ...f, contactName: e.target.value }))} /></div>
-              <div><Label>Phone</Label><Input value={supForm.contactPhone || ""} onChange={(e) => setSupForm((f) => ({ ...f, contactPhone: e.target.value }))} /></div>
-            </div>
-            <div><Label>Email</Label><Input value={supForm.contactEmail || ""} onChange={(e) => setSupForm((f) => ({ ...f, contactEmail: e.target.value }))} /></div>
-          </div>
-          <div className="flex gap-2 justify-end mt-4">
-            {editingSupplier && <Button variant="ghost" onClick={() => { setEditingSupplier(null); setSupForm({}); }}>← Back</Button>}
-            <Button className="bg-[#1a5276] text-white" onClick={() => {
-              if (!supForm.name) return;
-              if (editingSupplier) updateSup.mutate({ id: editingSupplier.id, d: supForm });
-              else createSup.mutate(supForm);
-            }}>
-              {editingSupplier ? "Update" : "Add Supplier"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Address Dialog ──────────────────────────────────────────────── */}
-      <Dialog open={showAddressDialog} onOpenChange={(o) => { setShowAddressDialog(o); if (!o) { setEditingAddress(null); setAddrForm({}); } }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editingAddress ? "Edit Address" : "Manage Delivery Addresses"}</DialogTitle>
-          </DialogHeader>
-          {!editingAddress && (
-            <div className="space-y-2 max-h-60 overflow-auto mb-4">
-              {poAddresses.map((a) => (
-                <div key={a.id} className="flex items-center justify-between p-2 rounded border text-sm">
-                  <div>
-                    <div className="font-medium">{a.name}</div>
-                    <div className="text-xs text-slate-500 truncate max-w-xs">{a.address}</div>
-                    {a.gstin && <div className="text-xs text-slate-500">GSTIN: {a.gstin}</div>}
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => { setEditingAddress(a); setAddrForm(a); }} className="text-slate-500 hover:text-slate-800 p-1"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => deleteAddr.mutate(a.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="grid gap-3">
-            <div><Label>Company / Location Name *</Label><Input value={addrForm.name || ""} onChange={(e) => setAddrForm((f) => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>Full Address *</Label><Textarea rows={3} value={addrForm.address || ""} onChange={(e) => setAddrForm((f) => ({ ...f, address: e.target.value }))} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>GSTIN</Label><Input value={addrForm.gstin || ""} onChange={(e) => setAddrForm((f) => ({ ...f, gstin: e.target.value }))} /></div>
-              <div><Label>Phone</Label><Input value={addrForm.phone || ""} onChange={(e) => setAddrForm((f) => ({ ...f, phone: e.target.value }))} /></div>
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end mt-4">
-            {editingAddress && <Button variant="ghost" onClick={() => { setEditingAddress(null); setAddrForm({}); }}>← Back</Button>}
-            <Button className="bg-[#1a5276] text-white" onClick={() => {
-              if (!addrForm.name || !addrForm.address) return;
-              if (editingAddress) updateAddr.mutate({ id: editingAddress.id, d: addrForm });
-              else createAddr.mutate(addrForm);
-            }}>
-              {editingAddress ? "Update" : "Add Address"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {supplierDialog}
+      {addressDialog}
     </div>
   );
 }
