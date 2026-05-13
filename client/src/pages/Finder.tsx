@@ -475,6 +475,11 @@ export default function Finder() {
   const [deleteReason, setDeleteReason] = useState("");
   const [customReason, setCustomReason] = useState("");
 
+  // Company size filter for AI generation
+  const [sizeFilter, setSizeFilter] = useState<string[]>(["A", "B", "C", "D"]);
+  // CRM status filter for lead list
+  const [crmFilter, setCrmFilter] = useState<'all' | 'new' | 'incrm'>('all');
+
   // Build full product list (builtins + custom DB products)
   const allProducts: ProductDef[] = [
     ...ALL_BUILTIN_PRODUCTS,
@@ -492,8 +497,14 @@ export default function Finder() {
 
   // ── Filtering leads ──────────────────────────────────────────────────────
 
+  const isInCRM = (lead: Lead) => lead.isFavorite || (lead.dealStage && lead.dealStage !== "new");
+
   const filteredLeads = (leads || []).filter(lead => {
     const regionMatch = selectedRegion === 'India' || lead.region === selectedRegion;
+
+    // CRM status filter
+    if (crmFilter === 'incrm' && !isInCRM(lead)) return false;
+    if (crmFilter === 'new' && isInCRM(lead)) return false;
 
     if (mode === 'industry') {
       return lead.industry === selectedIndustry && regionMatch;
@@ -515,11 +526,15 @@ export default function Finder() {
 
   // ── AI Generate ───────────────────────────────────────────────────────────
 
+  const toggleSize = (s: string) =>
+    setSizeFilter(prev => prev.includes(s) ? (prev.length > 1 ? prev.filter(x => x !== s) : prev) : [...prev, s]);
+
   const handleAIGenerate = () => {
+    const sizeFilterPayload = sizeFilter.length < 4 ? sizeFilter : undefined;
     if (mode === 'industry') {
       // Industry mode: generate leads in the selected industry using all Fabrevol products
       generateMutation.mutate(
-        { industry: selectedIndustry, region: selectedRegion, count: 6 },
+        { industry: selectedIndustry, region: selectedRegion, count: 6, companySizeFilter: sizeFilterPayload },
         {
           onSuccess: (newLeads) => {
             const industryName = INDUSTRIES.find(i => i.id === selectedIndustry)?.name;
@@ -555,6 +570,7 @@ export default function Finder() {
         count: Math.min(targetIndustries.length * 3, 8),
         product: def.name,
         industries: targetIndustries,
+        companySizeFilter: sizeFilterPayload,
       },
       {
         onSuccess: (newLeads) => {
@@ -758,7 +774,7 @@ export default function Finder() {
                 )}
 
                 {/* Region */}
-                <div className="md:col-span-4 space-y-1.5">
+                <div className="md:col-span-3 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                     <Map className="w-3.5 h-3.5" /> Region
                   </label>
@@ -774,8 +790,36 @@ export default function Finder() {
                   </Select>
                 </div>
 
+                {/* Company Size Filter */}
+                <div className="md:col-span-3 space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" /> Company Size
+                  </label>
+                  <div className="flex gap-1.5 h-11 items-center">
+                    {[
+                      { id: "A", label: "A", title: "MNC / Large (>₹500Cr)" },
+                      { id: "B", label: "B", title: "Mid-Large (₹50–500Cr)" },
+                      { id: "C", label: "C", title: "SME (₹5–50Cr)" },
+                      { id: "D", label: "D", title: "Small (<₹5Cr)" },
+                    ].map(sz => (
+                      <button
+                        key={sz.id}
+                        title={sz.title}
+                        onClick={() => toggleSize(sz.id)}
+                        className={`flex-1 h-10 rounded-lg text-sm font-bold border-2 transition-all ${
+                          sizeFilter.includes(sz.id)
+                            ? "bg-[#153e4d] text-white border-[#153e4d]"
+                            : "bg-white text-slate-400 border-slate-200 hover:border-slate-400"
+                        }`}
+                      >
+                        {sz.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Generate button */}
-                <div className="md:col-span-3">
+                <div className="md:col-span-2">
                   <Button
                     size="lg"
                     onClick={handleAIGenerate}
@@ -958,6 +1002,33 @@ export default function Finder() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          {/* ── CRM Filter Bar ── */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5" /> Show:
+            </span>
+            {([
+              { id: 'all',   label: 'All Leads' },
+              { id: 'new',   label: '🆕 Not in CRM' },
+              { id: 'incrm', label: '✅ Already in CRM' },
+            ] as const).map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => setCrmFilter(opt.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  crmFilter === opt.id
+                    ? 'bg-[#153e4d] text-white border-[#153e4d]'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <span className="text-xs text-slate-400 ml-auto">
+              {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
+            </span>
           </div>
 
           {/* ── Results ── */}

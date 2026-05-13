@@ -327,12 +327,29 @@ export function LeadCard({
             </div>
           )}
 
-          {lead.intelligence && (
-            <div className="flex gap-2 items-start text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
-              <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-              <p>{lead.intelligence}</p>
-            </div>
-          )}
+          {lead.intelligence && (() => {
+            const sourceMatch = lead.intelligence.match(/^\[Source:\s*(.+?)\]\n*/s);
+            const sourceNote = sourceMatch ? sourceMatch[1].trim() : null;
+            const intelligenceText = sourceNote
+              ? lead.intelligence.replace(/^\[Source:\s*.+?\]\n*/s, "").trim()
+              : lead.intelligence;
+            return (
+              <>
+                {sourceNote && (
+                  <div className="flex gap-2 items-start text-xs text-slate-500 bg-sky-50 p-2 rounded border border-sky-100">
+                    <ExternalLink className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-0.5" />
+                    <p><span className="font-semibold text-sky-700">Source:</span> {sourceNote}</p>
+                  </div>
+                )}
+                {intelligenceText && (
+                  <div className="flex gap-2 items-start text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <p>{intelligenceText}</p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </CardContent>
 
         <CardFooter className="pt-2 pb-4 border-t border-slate-50 mt-auto bg-slate-50/30">

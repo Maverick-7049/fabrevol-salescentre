@@ -244,6 +244,7 @@ export async function registerRoutes(
     count: z.number().int().min(1).max(8).default(5),
     product: z.string().optional(),
     industries: z.array(z.string()).optional(),
+    companySizeFilter: z.array(z.enum(["A", "B", "C", "D"])).optional(),
   });
 
   const generatedLeadSchema = z.object({
@@ -258,9 +259,10 @@ export async function registerRoutes(
     pitch: z.string().default(""),
     intelligence: z.string().default(""),
     companySize: z.enum(["A", "B", "C", "D"]).optional(),
+    sourceNote: z.string().default(""),
   });
 
-  async function generateLeadsForIndustry(industry: string, region: string, count: number, product: string | undefined, existingLeads: any[]) {
+  async function generateLeadsForIndustry(industry: string, region: string, count: number, product: string | undefined, existingLeads: any[], companySizeFilter?: string[]) {
     const industryName = INDUSTRY_NAMES[industry] || industry;
     const products = product 
       ? `${product} (specifically focus on buyers of this product)`
@@ -271,15 +273,25 @@ export async function registerRoutes(
       .map(l => l.company)
       .join(", ");
 
-    const regionFilter = region === "India" 
-      ? "anywhere in India (focus on Maharashtra, Gujarat, Rajasthan, Madhya Pradesh, Telangana)" 
+    const regionFilter = region === "India"
+      ? "anywhere in India (focus on Maharashtra, Gujarat, Rajasthan, Madhya Pradesh, Telangana)"
       : `in ${region}, India`;
+
+    const SIZE_DESCRIPTIONS: Record<string, string> = {
+      A: "A — MNC or large listed Indian company (>₹500 Cr turnover)",
+      B: "B — established mid-large company (₹50–500 Cr turnover)",
+      C: "C — regional SME (₹5–50 Cr turnover)",
+      D: "D — small manufacturer/startup (<₹5 Cr turnover)",
+    };
+    const sizeInstruction = companySizeFilter && companySizeFilter.length > 0 && companySizeFilter.length < 4
+      ? `\nCOMPANY SIZE FILTER — Only include companies of these sizes: ${companySizeFilter.map(s => SIZE_DESCRIPTIONS[s]).join("; ")}. Do not include other sizes.`
+      : "";
 
     const prompt = `You are a B2B sales intelligence tool for Fabrevol, an Indian specialty chemicals supplier offering PVC stabilizers, epoxy resins, TDI, MDI, and Resil products (silicones, antifoams, spray adjuvants, water repellents — excluding textile division).
 
 Generate ${Math.min(count, 8)} REAL manufacturer companies in the "${industryName}" industry located ${regionFilter} that would be potential buyers of: ${products}.
 
-IMPORTANT: These must be real, verifiable Indian manufacturing companies. Do NOT invent fictional companies.
+IMPORTANT: These must be real, verifiable Indian manufacturing companies. Do NOT invent fictional companies.${sizeInstruction}
 ${existingCompanies ? `\nDo NOT include these companies (already in database): ${existingCompanies}` : ""}
 
 For each company, return a JSON array with objects containing:
@@ -292,6 +304,7 @@ For each company, return a JSON array with objects containing:
 - "website": Company website URL if known, otherwise empty string
 - "linkedin": Company LinkedIn URL if known, otherwise empty string
 - "source": "AI Discovery"
+- "sourceNote": A brief citation note explaining how this company was identified — e.g. "Company website: fabricolabs.com — listed rubber chemical manufacturer in Pune MIDC" or "LinkedIn profile confirmed: mid-size PVC compounder in Ahmedabad". Be specific about what signals confirm this company is real and buys these chemicals.
 - "tags": Array of 2-4 relevant tags about the company (products, certifications, specializations)
 - "pitch": A detailed 3-4 sentence sales pitch structured as: (1) WHICH specific Fabrevol product to pitch, (2) WHY this company needs it — referencing their actual manufacturing processes or products, (3) our competitive advantage (cost savings, regulatory compliance, technical superiority, or reliability of supply), and (4) a suggested opening angle for the first conversation (e.g. "Offer a free trial batch" or "Lead with compliance documentation"). Make it actionable for the sales rep.
 - "intelligence": A 2-3 sentence procurement intelligence note about the company covering: capacity/scale, certifications (ISO, FDA, CE etc.), parent company or group, and any known procurement patterns or decision-making structure.
@@ -368,7 +381,9 @@ Return a JSON object with a "companies" key containing the array of company obje
           source: "AI Discovery",
           tags: lead.tags,
           pitch: lead.pitch || null,
-          intelligence: lead.intelligence || null,
+          intelligence: lead.sourceNote
+            ? `[Source: ${lead.sourceNote}]\n\n${lead.intelligence || ""}`.trim()
+            : (lead.intelligence || null),
           status: "New",
           isFavorite: false,
           dealStage: "new",
@@ -403,7 +418,7 @@ Return a JSON object with a "companies" key containing the array of company obje
       if (!genInput.success) {
         return res.status(400).json({ message: genInput.error.errors[0]?.message || "Invalid input" });
       }
-      const { industry, region, count, product, industries } = genInput.data;
+      const { industry, region, count, product, industries, companySizeFilter } = genInput.data;
 
       const existingLeads = await storage.getAllLeadsIncludingDeleted();
 
@@ -412,7 +427,7 @@ Return a JSON object with a "companies" key containing the array of company obje
         const allSavedLeads = [];
 
         for (const ind of industries) {
-          const leads = await generateLeadsForIndustry(ind, region, leadsPerIndustry, product, existingLeads);
+          const leads = await generateLeadsForIndustry(ind, region, leadsPerIndustry, product, existingLeads, companySizeFilter);
           allSavedLeads.push(...leads);
         }
 
@@ -423,7 +438,7 @@ Return a JSON object with a "companies" key containing the array of company obje
         return res.status(201).json(allSavedLeads);
       }
 
-      const savedLeads = await generateLeadsForIndustry(industry, region, count, product, existingLeads);
+      const savedLeads = await generateLeadsForIndustry(industry, region, count, product, existingLeads, companySizeFilter);
 
       if (savedLeads.length === 0) {
         return res.status(500).json({ message: "No leads generated" });

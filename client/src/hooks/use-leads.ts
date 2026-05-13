@@ -105,7 +105,7 @@ export function useRestoreLead() {
 export function useGenerateLeads() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { industry: string; region: string; count?: number; product?: string; industries?: string[] }) => {
+    mutationFn: async (params: { industry: string; region: string; count?: number; product?: string; industries?: string[]; companySizeFilter?: string[] }) => {
       const res = await fetch("/api/leads/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

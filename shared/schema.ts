@@ -174,6 +174,7 @@ export const DEAL_STAGES = [
   { id: "contacted", label: "Contacted", color: "bg-blue-500" },
   { id: "meeting", label: "Meeting Set", color: "bg-purple-500" },
   { id: "proposal", label: "Proposal Sent", color: "bg-amber-500" },
+  { id: "sampling", label: "Sampling", color: "bg-teal-500" },
   { id: "negotiation", label: "Negotiation", color: "bg-orange-500" },
   { id: "won", label: "Won", color: "bg-emerald-500" },
   { id: "lost", label: "Lost", color: "bg-red-500" },
