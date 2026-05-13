@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { useLeads, useUpdateLead, useDeleteLead, useGenerateLeads } from "@/hooks/use-leads";
 import { useProducts, useAnalyzeProductByName, useAnalyzeProductByPdf, useDeleteProduct } from "@/hooks/use-products";
 import { LeadCard } from "@/components/LeadCard";
@@ -465,10 +466,10 @@ export default function Finder() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Mode: find buyers for a product vs find leads in an industry
-  const [mode, setMode] = useState<'product' | 'industry'>('product');
-  const [selectedProduct, setSelectedProduct] = useState(ALL_BUILTIN_PRODUCTS[0].id);
-  const [selectedIndustry, setSelectedIndustry] = useState(INDUSTRIES[0].id);
-  const [selectedRegion, setSelectedRegion] = useState(REGIONS[0].id);
+  const [mode, setMode] = usePersistedState<'product' | 'industry'>('finder_mode', 'product');
+  const [selectedProduct, setSelectedProduct] = usePersistedState<string>('finder_product', ALL_BUILTIN_PRODUCTS[0].id);
+  const [selectedIndustry, setSelectedIndustry] = usePersistedState<string>('finder_industry', INDUSTRIES[0].id);
+  const [selectedRegion, setSelectedRegion] = usePersistedState<string>('finder_region', REGIONS[0].id);
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [productNameInput, setProductNameInput] = useState("");
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
@@ -476,9 +477,9 @@ export default function Finder() {
   const [customReason, setCustomReason] = useState("");
 
   // Company size filter for AI generation
-  const [sizeFilter, setSizeFilter] = useState<string[]>(["A", "B", "C", "D"]);
+  const [sizeFilter, setSizeFilter] = usePersistedState<string[]>('finder_size_filter', ["A", "B", "C", "D"]);
   // CRM status filter for lead list
-  const [crmFilter, setCrmFilter] = useState<'all' | 'new' | 'incrm'>('all');
+  const [crmFilter, setCrmFilter] = usePersistedState<'all' | 'new' | 'incrm'>('finder_crm_filter', 'all');
 
   // Build full product list (builtins + custom DB products)
   const allProducts: ProductDef[] = [

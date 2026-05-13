@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import { useLeads, useUpdateLead, useCreateLead } from "@/hooks/use-leads";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -640,11 +641,11 @@ function AddLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 export default function CRM() {
   const { data: leads, isLoading } = useLeads();
   const { toast } = useToast();
-  const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = usePersistedState<number | null>('crm_selected_lead', null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"board" | "table">("board");
-  const [filterIndustry, setFilterIndustry] = useState("all");
+  const [viewMode, setViewMode] = usePersistedState<"board" | "table">("crm_view_mode", "board");
+  const [filterIndustry, setFilterIndustry] = usePersistedState<string>("crm_filter_industry", "all");
 
   const crmLeads = leads?.filter(l => l.status === "Target" || l.isFavorite) || [];
 
