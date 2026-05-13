@@ -477,7 +477,7 @@ export default function Finder() {
   const [customReason, setCustomReason] = useState("");
 
   // Company size filter for AI generation
-  const [sizeFilter, setSizeFilter] = usePersistedState<string[]>('finder_size_filter', ["A", "B", "C", "D"]);
+  const [sizeFilter, setSizeFilter] = usePersistedState<string[]>('finder_size_filter', []);
   // CRM status filter for lead list
   const [crmFilter, setCrmFilter] = usePersistedState<'all' | 'new' | 'incrm'>('finder_crm_filter', 'all');
 
@@ -528,10 +528,10 @@ export default function Finder() {
   // ── AI Generate ───────────────────────────────────────────────────────────
 
   const toggleSize = (s: string) =>
-    setSizeFilter(prev => prev.includes(s) ? (prev.length > 1 ? prev.filter(x => x !== s) : prev) : [...prev, s]);
+    setSizeFilter(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
   const handleAIGenerate = () => {
-    const sizeFilterPayload = sizeFilter.length < 4 ? sizeFilter : undefined;
+    const sizeFilterPayload = sizeFilter.length > 0 ? sizeFilter : undefined;
     if (mode === 'industry') {
       // Industry mode: generate leads in the selected industry using all Fabrevol products
       generateMutation.mutate(
@@ -795,6 +795,9 @@ export default function Finder() {
                 <div className="md:col-span-3 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5" /> Company Size
+                    {sizeFilter.length === 0 && (
+                      <span className="ml-1 text-xs font-normal normal-case text-slate-400">(any — select to filter)</span>
+                    )}
                   </label>
                   <div className="flex gap-1.5 h-11 items-center">
                     {[

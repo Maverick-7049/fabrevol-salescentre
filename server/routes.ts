@@ -209,7 +209,7 @@ export async function registerRoutes(
     pvc: "Ca-Zn stabilizers, PVC heat stabilizers (calcium/zinc acetylacetonate, stearates), light stabilizers (HALS), UV absorbers, antioxidants, one-pack stabilizers, ESBO, silane coupling agents for fillers",
     paints: "Epoxy resins (HSC1100/3300/2306 for industrial/protective coatings), epoxy hardeners & amines (Jeffamine, MXDA, IPDA), silicone-based additives (defoamers, flow agents), silane coupling agents, solvents (MIBK, propylene carbonate, benzyl alcohol), light stabilizers, UV absorbers, MQ silicone resin",
     construction: "Epoxy flooring resins, epoxy hardeners (TETA, DETA), silicone water repellents (Aquaphobe), waterproofing silicone emulsions, construction sealants, silane coupling agents, solvents (furfuryl alcohol, propylene carbonate)",
-    agriculture: "Spray adjuvants (silicone-based wetters/spreaders like Resilwet/Resicare), antifoam agents for agrochemical formulations, silicone surfactants",
+    agriculture: "Spray adjuvants (silicone-based wetters/spreaders like Resilwet/Resicare), antifoam agents for agrochemical formulations, silicone surfactants. TARGET: pesticide manufacturers and fertiliser manufacturers — companies that formulate and sell crop-protection products or fertilisers (e.g. companies like Sonkul Agro, Devamarat Agro, and similar Indian agro-input manufacturers). These companies use spray adjuvants and antifoam agents in their formulation process.",
     paper_pulp: "Antifoam agents (silicone-based defoamers for pulp washing, paper coating), paper making chemicals, silicone fluids",
     water_treatment: "Antifoam agents (silicone defoamers for effluent treatment, aeration), process chemicals",
     leather: "Silicone softeners, silicone release agents for leather finishing, water repellent treatments, silicone surfactants & wetting agents",
@@ -283,7 +283,7 @@ export async function registerRoutes(
       C: "C — regional SME (₹5–50 Cr turnover)",
       D: "D — small manufacturer/startup (<₹5 Cr turnover)",
     };
-    const sizeInstruction = companySizeFilter && companySizeFilter.length > 0 && companySizeFilter.length < 4
+    const sizeInstruction = companySizeFilter && companySizeFilter.length > 0
       ? `\nCOMPANY SIZE FILTER — Only include companies of these sizes: ${companySizeFilter.map(s => SIZE_DESCRIPTIONS[s]).join("; ")}. Do not include other sizes.`
       : "";
 
